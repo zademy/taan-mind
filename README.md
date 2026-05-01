@@ -219,6 +219,9 @@ paperless-ui-chat/
 | GLM      | `glm/glm-5.1`          | GLM 5.1      |
 | GLM      | `glm/glm-5-turbo`      | GLM 5 Turbo  |
 
+> [!NOTE]
+> More AI model providers and model presets will be added over time as the project evolves.
+
 ## Scripts
 
 | Script             | Purpose                          |
@@ -234,4 +237,3 @@ paperless-ui-chat/
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
