@@ -18,7 +18,7 @@
   <img alt="Drizzle ORM 0.45.2" src="https://img.shields.io/badge/Drizzle%20ORM-0.45.2-C5F74F?style=for-the-badge&logo=drizzle&logoColor=000000">
   <img alt="Tailwind CSS 4.2.2" src="https://img.shields.io/badge/Tailwind%20CSS-4.2.2-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white">
   <img alt="Ollama runtime" src="https://img.shields.io/badge/Ollama-Runtime-111111?style=for-the-badge&logo=ollama&logoColor=white">
-  <img alt="nuxt-charts 2.1.4" src="https://img.shields.io/badge/nuxt--charts-2.1.4-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white">
+  <img alt="nuxt-charts 2.1.4" src="https://img.shields.io/badge/nuxt--charts-2.1.4-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white"> <a href="https://deepwiki.com/zademy/taan-mind"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-Ask%20AI-5b21b6?style=for-the-badge&logo=googledocs&logoColor=white"></a>
 </p>
 
 ---
@@ -237,3 +237,9 @@ paperless-ui-chat/
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+## Support Development
+
+If Tata-Mind is useful to you, consider buying me a coffee!
+
+<a href="https://ko-fi.com/C0C01Y1SQI" target="_blank"><img height="26" src="https://img.shields.io/badge/Donate-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Donate with Ko-fi" /></a> <a href="https://buy.stripe.com/00wcN67J46kl8LY8GYfMA01" target="_blank"><img height="26" src="https://img.shields.io/badge/Donate-Stripe-635bff?style=for-the-badge&logo=stripe&logoColor=white" alt="Donate with Stripe" /></a>
