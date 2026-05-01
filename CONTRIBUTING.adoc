@@ -1,0 +1,194 @@
+= Contributing to Taan Mind
+:toc:
+:toclevels: 3
+:sectanchors:
+
+Thank you for contributing to Taan Mind. This guide explains how to propose, build, test, and submit changes safely.
+
+== Project principles
+
+Contributions should follow these principles:
+
+* Keep changes small, focused, and reviewable.
+* Prefer clear code over clever code.
+* Preserve privacy by default.
+* Validate all external input and tool output.
+* Keep credentials, tokens, and private data out of source control.
+* Match the existing Nuxt 4, Vue 3, TypeScript, and Nitro conventions.
+
+== Development setup
+
+=== Prerequisites
+
+* Node.js 22 or newer.
+* pnpm 10 or newer.
+* Docker, when running the full Paperless-ngx stack locally.
+* Ollama, when testing OCR flows locally.
+
+=== Install dependencies
+
+[source,bash]
+----
+pnpm install
+----
+
+=== Configure environment
+
+[source,bash]
+----
+cp .env.example .env
+----
+
+Fill only the values needed for your local workflow. Do not commit `.env` files, API keys, tokens, database files, or generated secrets.
+
+=== Run the app
+
+[source,bash]
+----
+pnpm dev
+----
+
+=== Run checks
+
+Before opening a pull request, run:
+
+[source,bash]
+----
+pnpm lint
+pnpm typecheck
+pnpm build
+----
+
+If your change touches database schema, also run the database generation or migration flow used by the project.
+
+== Branching and commits
+
+Use short branch names that describe the work:
+
+[source,text]
+----
+feat/document-context-filter
+fix/ocr-processing-state
+docs/security-policy
+----
+
+Use Conventional Commits where possible:
+
+[source,text]
+----
+feat(chat): add document context filter
+fix(ocr): avoid duplicate processing state
+docs: add contribution guide
+----
+
+== Pull request checklist
+
+A pull request should include:
+
+* A clear summary of the change.
+* The reason the change is needed.
+* Screenshots or recordings for UI changes.
+* Test evidence, including commands run and results.
+* Notes about migrations, configuration changes, or operational impact.
+* Security and privacy considerations when the change touches auth, sessions, external APIs, file processing, OCR, AI prompts, or document data.
+* A clear note when any part of the issue, design, code, tests, or documentation was generated or substantially assisted by AI.
+
+=== AI-assisted contributions
+
+AI tools are allowed when they help contributors work more clearly and safely. They are not a substitute for human review.
+
+If you use AI to prepare an issue or pull request, disclose it in the description and include:
+
+* Which parts were AI-assisted, such as the issue text, implementation plan, code, tests, documentation, refactor, or debugging notes.
+* Which files or areas were changed with AI assistance.
+* What human review you performed after generation.
+* Whether you checked for duplicated code, duplicated components, repeated composables, repeated server utilities, or overlapping API routes.
+* Which commands you ran to validate the change.
+
+Use this short template when relevant:
+
+[source,markdown]
+----
+AI assistance:
+- Assisted areas:
+- Files reviewed manually:
+- Duplication check:
+- Validation commands:
+- Notes for maintainers:
+----
+
+Maintainers may ask for a smaller patch, a manual rewrite, or additional explanation when AI-assisted work is hard to review, duplicates existing logic, changes architecture without justification, or introduces unclear behavior.
+
+== Code standards
+
+=== TypeScript and Vue
+
+* Use TypeScript for application code.
+* Prefer Vue 3 Composition API and `<script setup>` for Vue components.
+* Keep composables focused and reusable.
+* Keep server-only logic inside Nitro server routes, plugins, or utilities.
+* Use explicit validation for API inputs.
+
+=== Architecture
+
+* Keep UI, composables, server routes, shared types, and server utilities separated.
+* Avoid leaking Paperless tokens or AI provider credentials to the client.
+* Keep long-running or repeated work in server plugins or background processing utilities.
+* Prefer typed shared contracts for API responses and domain objects.
+
+=== Security
+
+* Treat document content, OCR output, AI output, and third-party API responses as untrusted data.
+* Sanitize rendered content and avoid unsafe HTML injection.
+* Use least-privilege configuration for API tokens and service accounts.
+* Never log secrets, raw credentials, session cookies, or private document contents.
+* Review prompt and tool interactions for prompt injection, tool poisoning, and data exfiltration risks.
+
+=== Documentation
+
+Update documentation when a change affects:
+
+* Setup or configuration.
+* Runtime behavior.
+* API contracts.
+* Security posture.
+* Deployment steps.
+* User-visible features.
+
+== Reporting issues
+
+When opening an issue, include:
+
+* What you expected to happen.
+* What happened instead.
+* Steps to reproduce.
+* Relevant logs with secrets removed.
+* Environment details, such as Node.js, pnpm, browser, deployment target, and operating system.
+
+Do not include private documents, tokens, credentials, or personal data in public issues.
+
+== FAQ
+
+=== Why can low-quality issues or pull requests be closed quickly?
+
+Maintainers have limited review time. Reports that do not include a clear problem, reproduction steps, expected behavior, relevant logs, or environment details may be closed without extended discussion. This keeps time available for reproducible bugs, focused feature requests, and contributions that are ready to review.
+
+=== Why can AI-generated issues or pull requests be closed?
+
+AI can help summarize, draft, and test ideas, but it can also produce confident mistakes, duplicated code, incorrect assumptions, or changes that do not match the architecture. AI-assisted work must be reviewed and shaped by the person submitting it. If a contribution looks automated, unreviewed, duplicated, or too broad, maintainers may close it or request a smaller revision.
+
+=== Why do some issues receive no detailed reply?
+
+A detailed reply is maintenance work. Unclear reports, duplicates, missing reproduction steps, unrelated requests, and issues that ignore this guide may be closed with little or no explanation. Clear, concrete, reproducible reports are easier to review and more likely to move forward.
+
+=== Why ask contributors to disclose AI assistance?
+
+Taan Mind includes AI chat, OCR, Paperless-ngx integration, background processing, and security-sensitive server routes. Maintainers need to know where AI was used so they can review risk, detect duplicated logic, verify architecture decisions, and confirm that generated code was tested by a person.
+
+=== Is this hostile to contributors?
+
+No. It protects the project from tracker spam, unreviewed automation, and maintainer burnout. Short, concrete, reproducible issues are welcome. Focused pull requests are welcome. Thoughtful AI-assisted work is welcome when it is disclosed, reviewed, tested, and kept within the project architecture.
+
+== License
+
+By contributing, you agree that your contributions are provided under the project's MIT License.

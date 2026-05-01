@@ -1,0 +1,405 @@
+# ============================================================================
+# docker-compose.yml — paperless-ui-chat
+# ============================================================================
+#
+# Full stack for paperless-ui-chat with Paperless-ngx document management.
+#
+# Architecture overview:
+#
+#   ┌─────────────────┐     ┌──────────────────────────────────────┐
+#   │  Host / Browser │────▶│ webserver (Paperless-ngx :8000)      │
+#   └─────────────────┘     │  ├── gotenberg (PDF conversion)       │
+#                           │  ├── tika (text extraction)           │
+#                           │  ├── broker (Redis)                   │
+#                           │  └── db (PostgreSQL)                  │
+#                           └──────────────────────────────────────┘
+#
+#   ┌─────────────────┐
+#   │  Host / Browser │────▶ app (paperless-ui-chat :3000)
+#   └─────────────────┘       ├── Talks to webserver via Docker DNS
+#                               └── Talks to Ollama on host via
+#                                   host.docker.internal
+#
+# Networks:
+#   app                  — Isolated bridge for the chat application.
+#   paperless_frontend   — Bridge connecting the chat app and the
+#                           Paperless-ngx webserver.
+#   paperless_backend    — Internal-only bridge for Paperless-ngx
+#                           infrastructure (db, redis, gotenberg, tika).
+#
+# Volumes:
+#   app_data             — Persistent SQLite database for the chat app.
+#   paperlessia_*        — Persistent data for Paperless-ngx services
+#                           (PostgreSQL, Redis, media, exports, etc.).
+#
+# Usage:
+#   docker compose up -d          # Start all services in detached mode.
+#   docker compose logs -f app    # Follow chat application logs.
+#   docker compose down           # Stop and remove containers.
+#   docker compose down -v        # Stop and remove containers + volumes.
+#
+# ============================================================================
+
+name: paperless-ui-chat
+
+services:
+  # ─── app ──────────────────────────────────────────────────────────────────
+  # The main paperless-ui-chat application built from the local Dockerfile.
+  # This is a Nuxt 3 app that provides a conversational UI on top of
+  # Paperless-ngx documents, powered by local LLM inference via Ollama.
+  app:
+    image: paperless-ui-chat:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+      args:
+        # Node.js and pnpm versions must match those used during development.
+        NODE_VERSION: 24.14.1
+        PNPM_VERSION: 10.33.2
+
+    # Load environment variables from a local .env file (not committed to VCS).
+    # Typical vars: NUXT_PAPERLESS_API_TOKEN, PAPERLESS_BOOTSTRAP_USER, etc.
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+      # URL to reach the Paperless-ngx webserver from inside this container.
+      # Uses Docker DNS name 'webserver' on the shared paperless_frontend network.
+      NUXT_PAPERLESS_BASE_URL: http://webserver:8000
+      # URL to reach Ollama running on the Docker host machine.
+      # host.docker.internal resolves to the host's gateway IP.
+      NUXT_OLLAMA_BASE_URL: http://host.docker.internal:11434
+      # Default Ollama model used for document analysis.
+      NUXT_OLLAMA_MODEL: glm-ocr:latest
+
+    # Wait for the bootstrap service to finish creating the API token
+    # and Paperless-ngx user before starting the application.
+    depends_on:
+      paperless-bootstrap:
+        condition: service_completed_successfully
+
+    ports:
+      - "3000:3000"
+
+    # Persist the SQLite database and any local app data across restarts.
+    volumes:
+      - app_data:/app/.data
+
+    # Ensure host.docker.internal resolves to the host machine's IP so the
+    # container can reach services like Ollama running on the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # Use an init process (PID 1) to properly handle signals (SIGTERM) and
+    # reap zombie processes inside the container.
+    init: true
+
+    # Automatically restart the container if it crashes or the Docker daemon
+    # restarts, unless explicitly stopped.
+    restart: unless-stopped
+
+    # ── Security hardening ──────────────────────────────────────────────────
+    # read_only: prevent writes to the container filesystem (data goes to
+    #   the tmpfs mount at /tmp and the persistent volume at /app/.data).
+    # tmpfs: provide a small in-memory filesystem for /tmp (needed by
+    #   Node.js and some native modules for temporary files).
+    # cap_drop ALL: drop all Linux capabilities (no need for特权 operations).
+    # security_opt no-new-privileges: prevent processes from gaining
+    #   additional privileges via setuid/setgid binaries.
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    # Health check: periodically verify the /api/health endpoint is responding
+    # with a successful HTTP status code.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:' + (process.env.PORT || '3000') + '/api/health').then((r) => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+    # The app needs to communicate with Paperless-ngx (paperless_frontend)
+    # and has its own isolated network (app).
+    networks:
+      - app
+      - paperless_frontend
+
+  # ─── broker (Redis) ──────────────────────────────────────────────────────
+  # Redis is used by Paperless-ngx as a message broker for background tasks
+  # (e.g., document OCR processing, classification, and consumption).
+  broker:
+    image: docker.io/library/redis:8.6.2
+    restart: unless-stopped
+    labels:
+      com.paperlessia.project: "paperless-ia"
+      com.paperlessia.service: "broker"
+      com.paperlessia.role: "redis-cache-queue"
+    # Persistence: save to disk every 60 seconds if at least 1 key changed.
+    # Log level: warning to reduce noise in container logs.
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - paperlessia_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - paperless_backend
+
+  # ─── db (PostgreSQL) ─────────────────────────────────────────────────────
+  # PostgreSQL database for Paperless-ngx. Stores document metadata, user
+  # accounts, classification labels, and application state.
+  db:
+    image: docker.io/library/postgres:18.3
+    restart: unless-stopped
+    labels:
+      com.paperlessia.project: "paperless-ia"
+      com.paperlessia.service: "db"
+      com.paperlessia.role: "postgres-database"
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+      # PGDATA: subdirectory for major-version-specific data, allowing safe
+      # future PostgreSQL major version upgrades without data conflicts.
+      PGDATA: /var/lib/postgresql/18/docker
+    volumes:
+      # Mount the parent directory (not PGDATA directly) so PostgreSQL
+      # manages its own data directory internally.
+      - paperlessia_pgdata:/var/lib/postgresql
+    healthcheck:
+      # Use pg_isready to check if PostgreSQL is accepting connections.
+      # $$ escaping is required by docker-compose for literal $ in shell.
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - paperless_backend
+
+  # ─── webserver (Paperless-ngx) ──────────────────────────────────────────
+  # The main Paperless-ngx application server. Handles document management,
+  # OCR processing, API endpoints, and the web dashboard.
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+    restart: unless-stopped
+    labels:
+      com.paperlessia.project: "paperless-ia"
+      com.paperlessia.service: "webserver"
+      com.paperlessia.role: "paperless-ngx"
+    depends_on:
+      # Wait for Redis and PostgreSQL to be healthy before starting.
+      broker:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      # Gotenberg and Tika just need to be started (no health check needed).
+      gotenberg:
+        condition: service_started
+      tika:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    environment:
+      # ── General settings ─────────────────────────────────────────────────
+      PAPERLESS_URL: http://localhost:8000
+      # WARNING: This secret key is UNSAFE for production. Change it and use
+      # Docker secrets or a vault in a production deployment.
+      PAPERLESS_SECRET_KEY: unsafe-development-secret-change-me
+      PAPERLESS_TIME_ZONE: America/Mexico_City
+      PAPERLESS_OCR_LANGUAGE: spa+eng
+
+      # ── Backend connections ──────────────────────────────────────────────
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: paperless
+      PAPERLESS_DB_POOLSIZE: 10
+
+      # ── OCR / document processing ────────────────────────────────────────
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+    volumes:
+      # Persistent data volumes for Paperless-ngx:
+      #   data   — Configuration, search index, and classification models.
+      #   media  — The actual document files (PDFs, images, etc.).
+      #   export — Exported documents and archives.
+      #   consume — Watched folder for new document ingestion.
+      - paperlessia_data:/usr/src/paperless/data
+      - paperlessia_media:/usr/src/paperless/media
+      - paperlessia_export:/usr/src/paperless/export
+      - paperlessia_consume:/usr/src/paperless/consume
+    healthcheck:
+      # Probe the root endpoint to verify the Django server is responding.
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5).read()"
+        ]
+      interval: 30s
+      timeout: 10s
+      # Longer start period because Paperless-ngx performs first-run setup
+      # (migrations, superuser creation, search index build, etc.).
+      start_period: 60s
+      retries: 5
+    networks:
+      # On paperless_frontend, this service is also reachable via the alias
+      # 'paperlessia-webserver' (for legacy or external references).
+      paperless_frontend:
+        aliases:
+          - paperlessia-webserver
+      paperless_backend:
+
+  # ─── paperless-bootstrap ────────────────────────────────────────────────
+  # One-shot init container that runs after Paperless-ngx is healthy.
+  # Creates (or updates) a dedicated API user and generates a DRF auth token
+  # that the chat application uses to communicate with Paperless-ngx.
+  #
+  # The token value is read from NUXT_PAPERLESS_API_TOKEN in the .env file.
+  # Default credentials: paperless / paperless (change for production!).
+  paperless-bootstrap:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      PAPERLESS_URL: http://localhost:8000
+      PAPERLESS_SECRET_KEY: unsafe-development-secret-change-me
+      PAPERLESS_TIME_ZONE: America/Mexico_City
+      PAPERLESS_OCR_LANGUAGE: spa+eng
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: paperless
+      PAPERLESS_DB_POOLSIZE: 10
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+    depends_on:
+      webserver:
+        condition: service_healthy
+    # Override the default entrypoint to run a Django management shell script
+    # that creates the API user and token.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        python manage.py shell <<'PYTHON'
+        import os
+        from django.contrib.auth import get_user_model
+        from rest_framework.authtoken.models import Token
+
+        token = os.environ['NUXT_PAPERLESS_API_TOKEN']
+        username = os.environ.get('PAPERLESS_BOOTSTRAP_USER', 'paperless')
+        password = os.environ.get('PAPERLESS_BOOTSTRAP_PASSWORD', 'paperless')
+        email = os.environ.get('PAPERLESS_BOOTSTRAP_EMAIL', 'paperless@example.local')
+
+        User = get_user_model()
+        user, _ = User.objects.get_or_create(username=username)
+        user.email = email
+        user.is_staff = True
+        user.is_superuser = True
+        user.set_password(password)
+        user.save()
+        Token.objects.update_or_create(user=user, defaults={'key': token})
+        PYTHON
+    networks:
+      - paperless_frontend
+      - paperless_backend
+
+  # ─── gotenberg ───────────────────────────────────────────────────────────
+  # Gotenberg is a stateless API for converting HTML, URL, and office
+  # documents to PDF. Used by Paperless-ngx for document normalization
+  # before OCR processing.
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:8.31.0
+    restart: unless-stopped
+    labels:
+      com.paperlessia.project: "paperless-ia"
+      com.paperlessia.service: "gotenberg"
+      com.paperlessia.role: "document-conversion"
+    command:
+      - "gotenberg"
+      # Security: disable JavaScript execution in Chromium (mitigates XSS
+      # attacks during HTML-to-PDF conversion).
+      - "--chromium-disable-javascript=true"
+      # Restrict Chromium file access to the /tmp directory only.
+      - "--chromium-allow-list=file:///tmp/.*"
+      # Increase API timeout for large or complex document conversions.
+      - "--api-timeout=60s"
+    networks:
+      - paperless_backend
+
+  # ─── tika ────────────────────────────────────────────────────────────────
+  # Apache Tika is a content detection and text extraction library.
+  # Used by Paperless-ngx to extract text from various file formats
+  # (PDF, Word, Excel, PowerPoint, images, etc.) for indexing and search.
+  tika:
+    image: docker.io/apache/tika:3.3.0.0
+    restart: unless-stopped
+    labels:
+      com.paperlessia.project: "paperless-ia"
+      com.paperlessia.service: "tika"
+      com.paperlessia.role: "document-text-extraction"
+    networks:
+      - paperless_backend
+
+# ── Named volumes ──────────────────────────────────────────────────────────
+# All persistent data is stored in Docker named volumes. These survive
+# container removal and recreation (docker compose down vs. down -v).
+volumes:
+  # SQLite database and local data for the chat application.
+  app_data:
+  # Redis persistence for Paperless-ngx task queue.
+  paperlessia_redisdata:
+  # PostgreSQL data directory for Paperless-ngx.
+  paperlessia_pgdata:
+  # Paperless-ngx configuration and search index.
+  paperlessia_data:
+  # Paperless-ngx document files (PDFs, images, etc.).
+  paperlessia_media:
+  # Paperless-ngx document exports.
+  paperlessia_export:
+  # Paperless-ngx consumption folder (watched for new documents).
+  paperlessia_consume:
+
+# ── Networks ──────────────────────────────────────────────────────────────
+networks:
+  # Isolated bridge network for the chat application container.
+  app:
+    driver: bridge
+  # Bridge network connecting the chat app and Paperless-ngx webserver.
+  # Allows the app to reach the Paperless-ngx API via DNS name 'webserver'.
+  paperless_frontend:
+    driver: bridge
+  # Internal-only bridge network for Paperless-ngx infrastructure services.
+  # 'internal: true' means no external/internet access — only inter-service
+  # communication. This is a security measure to limit the attack surface
+  # of database, Redis, and document processing services.
+  paperless_backend:
+    driver: bridge
+    internal: true

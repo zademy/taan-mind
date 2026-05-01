@@ -1,0 +1,68 @@
+# ============================================================================
+# .dockerignore — paperless-ui-chat
+# ============================================================================
+#
+# Files and directories listed here are excluded from the Docker build context.
+# This reduces the size of the context sent to the Docker daemon, improves
+# build cache efficiency, and prevents sensitive files from entering the image.
+#
+# ============================================================================
+
+# ── Version control ────────────────────────────────────────────────────────
+# Git metadata is never needed inside a container image.
+.git
+.github
+.gitignore
+
+# ── IDE & tooling ─────────────────────────────────────────────────────────
+# Editor configurations, workspace settings, and AI coding tools.
+.vscode
+.codebase-wiki
+.pi
+.pi-lens
+
+# ── Dependencies & build artifacts ─────────────────────────────────────────
+# These are re-created inside the container during the build process.
+# Excluding them prevents version mismatches between host and container.
+node_modules
+.pnpm-store
+.nuxt
+.output
+.data
+
+# ── Environment files ──────────────────────────────────────────────────────
+# Never ship .env files into the image — they contain secrets.
+# Keep .env.example as a template (negation pattern).
+.env
+.env.*
+!.env.example
+
+# ── Docker files ───────────────────────────────────────────────────────────
+# Prevent Docker from recursively including its own configuration files
+# in the build context (harmless but adds unnecessary size).
+Dockerfile*
+docker-compose*.yml
+
+# ── Documentation ─────────────────────────────────────────────────────────
+# README, license, and agent instructions are not needed at runtime.
+README.md
+AGENTS.md
+LICENSE
+
+# ── OS files ───────────────────────────────────────────────────────────────
+# macOS and Windows thumbnail caches / system files.
+.DS_Store
+Thumbs.db
+
+# ── Build outputs ─────────────────────────────────────────────────────────
+# Test coverage reports and dist outputs.
+coverage
+dist
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+# Debug and error log files from various package managers.
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*

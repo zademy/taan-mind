@@ -1,0 +1,65 @@
+{
+  "name": "paperless-ui-chat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck",
+    "db:generate": "nuxt db generate",
+    "db:migrate": "nuxt db migrate",
+    "prepare": "simple-git-hooks"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.41",
+    "@ai-sdk/vue": "^3.0.158",
+    "@comark/nuxt": "^0.3.1",
+    "@iconify-json/logos": "^1.2.11",
+    "@iconify-json/lucide": "^1.2.102",
+    "@iconify-json/simple-icons": "^1.2.78",
+    "@libsql/client": "^0.17.2",
+    "@nuxt/image": "^2.0.0",
+    "@nuxt/ui": "^4.6.1",
+    "@nuxthub/core": "^0.10.7",
+    "@nuxtjs/i18n": "10.3.0",
+    "@shikijs/langs": "^4.0.2",
+    "@vueuse/core": "^14.2.1",
+    "ai": "^6.0.158",
+    "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
+    "mailparser": "^3.9.8",
+    "mupdf": "^1.27.0",
+    "nuxt": "^4.4.2",
+    "nuxt-charts": "^2.1.4",
+    "nuxt-csurf": "^1.6.5",
+    "officeparser": "^6.1.0",
+    "sharp": "^0.34.5",
+    "shiki": "^4.0.2",
+    "striptags": "3.2.0",
+    "tailwindcss": "^4.2.2",
+    "vercel-minimax-ai-provider": "^0.0.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.15.2",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^25.6.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.2.0",
+    "lint-staged": "^16.4.0",
+    "simple-git-hooks": "^2.13.1",
+    "typescript": "^6.0.2",
+    "vue-tsc": "^3.2.6"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,ts,vue,mjs}": "eslint --fix"
+  },
+  "packageManager": "pnpm@10.33.2"
+}

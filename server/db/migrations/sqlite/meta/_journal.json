@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1762072892319,
+      "tag": "0000_amusing_ozymandias",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774992100178,
+      "tag": "0001_aromatic_inhumans",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1775142810661,
+      "tag": "0002_eager_gorilla_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1777159586084,
+      "tag": "0003_open_microchip",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1777236685073,
+      "tag": "0004_big_chronomancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1777244344317,
+      "tag": "0005_skinny_newton_destine",
+      "breakpoints": true
+    }
+  ]
+}

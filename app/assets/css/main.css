@@ -1,0 +1,156 @@
+/* ==========================================================================
+   Framework Imports
+   - Web fonts are linked from app.vue with preconnect to avoid CSS @import
+   - Tailwind CSS v4 with static theme extraction
+   - Nuxt UI component library
+   ========================================================================== */
+
+@import "tailwindcss" theme(static);
+@import "@nuxt/ui";
+
+/* ==========================================================================
+   Static Theme Configuration
+   - Overrides default Tailwind font families with custom Google Fonts
+   - --font-sans: Used for all body text and UI elements
+   - --font-mono: Used for code blocks, code snippets, and monospaced content
+   ========================================================================== */
+
+@theme static {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.font-cinzel {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+/* ==========================================================================
+   Base Layer Styles
+   - Body: Sets the default background color for light and dark modes.
+     Font smoothing is applied for better text rendering on different OSes.
+   - Scrollbar: Custom WebKit scrollbar with a slim, rounded thumb.
+     Adapted for both light and dark themes.
+   ========================================================================== */
+
+@layer base {
+  /* Body background and text rendering improvements */
+  body {
+    @apply bg-neutral-50 dark:bg-neutral-950;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar — slim rounded design */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* Scrollbar track — transparent to blend with any background */
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  /* Scrollbar thumb — subtle neutral color, rounded pill shape */
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-200 dark:bg-neutral-700 rounded-full;
+  }
+
+  /* Scrollbar thumb hover — slightly darker for visual feedback */
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-300 dark:bg-neutral-600;
+  }
+}
+
+/* ==========================================================================
+   Global CSS Custom Properties (Design Tokens)
+   - --ui-container: Sets the default max-width for page containers (3XL)
+   - --selection-bg / --selection-text: Custom text selection colors
+     using OKLCH color space for perceptual uniformity
+   ========================================================================== */
+
+:root {
+  /* Nuxt UI container max-width */
+  --ui-container: var(--container-3xl);
+
+  /* Custom text selection colors (OKLCH) */
+  --selection-bg: oklch(0.6 0.2 250);
+  --selection-text: oklch(0.98 0 0);
+}
+
+/* Apply custom selection colors globally */
+::selection {
+  background-color: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+/* ==========================================================================
+   Shiki Syntax Highlighting — Dark Mode Override
+   Forces Shiki's dark-mode theme tokens onto each syntax span.
+   Required because Shiki generates both light and dark token sets,
+   and the dark variant must be explicitly applied when the dark class
+   is active on the root <html> element.
+   ========================================================================== */
+
+html.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* ==========================================================================
+   Vue Page Transition Animations
+   Used with Vue's <Transition> component for client-side navigation.
+   - Enter: Fades in while sliding up 8px
+   - Leave: Fades out while sliding up (negative) 8px
+   - Duration: 200ms with ease timing
+   ========================================================================== */
+
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* Starting state: invisible and shifted down */
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Ending state: invisible and shifted up */
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ==========================================================================
+   Toast Notification Animations
+   Used with Vue's <Transition> component for toast messages.
+   - Enter/Leave: Slides in from the right with a slight scale-down effect
+   - Easing: cubic-bezier(0.34, 1.56, 0.64, 1) — a spring-like overshoot
+     curve for a playful, snappy feel
+   - Duration: 300ms
+   ========================================================================== */
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Starting state: hidden off-screen to the right */
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(100%) scale(0.9);
+}
+
+/* Ending state: exits off-screen to the right */
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(100%) scale(0.9);
+}
