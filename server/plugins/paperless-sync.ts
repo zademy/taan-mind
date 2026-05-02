@@ -1,4 +1,5 @@
 import { consola } from 'consola'
+import { isNull } from 'drizzle-orm'
 import type { PaperlessDocument, PaperlessPaginatedResponse } from '~~/shared/types/paperless'
 
 /**
@@ -77,7 +78,8 @@ export default defineNitroPlugin((nitroApp) => {
                   paperlessCreated: doc.created ? new Date(doc.created) : null,
                   paperlessModified: doc.modified ? new Date(doc.modified) : null,
                   updatedAt: new Date()
-                }
+                },
+                setWhere: isNull(schema.paperlessDocuments.deletedAt)
               })
           }
 
