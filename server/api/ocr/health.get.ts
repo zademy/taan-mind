@@ -1,3 +1,5 @@
+import { listOllamaModels } from '../../utils/ollama'
+
 /**
  * GET /api/ocr/health
  *
@@ -6,11 +8,10 @@
  */
 export default defineEventHandler(async (event) => {
   try {
-    const client = useOcrClient(event)
     const model = getOcrModel(event)
-    const tags = await client<{ models: Array<{ name: string }> }>('/api/tags')
+    const models = await listOllamaModels(event)
     const modelBase = model.split(':')[0]!
-    const available = tags.models?.some(m => m.name === model || m.name.startsWith(modelBase)) ?? false
+    const available = models.some(m => m.name === model || m.name.startsWith(modelBase))
     return { status: 'ok' as const, model, available }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Ollama not reachable'

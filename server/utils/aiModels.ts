@@ -1,9 +1,14 @@
 import type { H3Event } from 'h3'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createMinimax } from 'vercel-minimax-ai-provider'
+import type { ModelProvider } from '#shared/utils/models'
+import { isStaticModel, isSupportedModel } from '#shared/utils/models'
+import { getOllamaOpenAIBaseUrl, hasOllamaModel } from './ollama'
 
 /** Supported AI model provider names. */
-type ProviderName = 'minimax' | 'glm'
+type ProviderName = ModelProvider
+
+const SUPPORTED_PROVIDERS: ProviderName[] = ['minimax', 'glm', 'ollama']
 
 /**
  * Parses a model identifier into its provider and model ID components.
@@ -18,14 +23,14 @@ function splitProviderModel(model: string): { provider: ProviderName, modelId: s
   const [provider, ...modelParts] = model.split('/')
   const modelId = modelParts.join('/')
 
-  if ((provider !== 'minimax' && provider !== 'glm') || !modelId) {
+  if (!SUPPORTED_PROVIDERS.includes(provider as ProviderName) || !modelId) {
     throw createError({
       statusCode: 400,
       statusMessage: `Unsupported model: ${model}`
     })
   }
 
-  return { provider, modelId }
+  return { provider: provider as ProviderName, modelId }
 }
 
 /**
@@ -60,6 +65,14 @@ function requireRuntimeSecret(value: unknown, name: string): string {
  */
 export function resolveLanguageModel(model: string, event: H3Event) {
   const config = useRuntimeConfig(event)
+
+  if (!isSupportedModel(model)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Unsupported model: ${model}`
+    })
+  }
+
   const { provider, modelId } = splitProviderModel(model)
 
   // Configure MiniMax provider
@@ -73,14 +86,73 @@ export function resolveLanguageModel(model: string, event: H3Event) {
   }
 
   // Configure GLM (OpenAI-compatible) provider
-  const glm = createOpenAICompatible({
-    name: 'glm',
-    apiKey: requireRuntimeSecret(config.glmApiKey, 'GLM API key'),
-    baseURL: requireRuntimeSecret(config.glmBaseUrl, 'GLM base URL').replace(/\/+$/, ''),
-    headers: {
-      'Accept-Language': 'en-US,en'
-    }
+  if (provider === 'glm') {
+    const glm = createOpenAICompatible({
+      name: 'glm',
+      apiKey: requireRuntimeSecret(config.glmApiKey, 'GLM API key'),
+      baseURL: requireRuntimeSecret(config.glmBaseUrl, 'GLM base URL').replace(/\/+$/, ''),
+      headers: {
+        'Accept-Language': 'en-US,en'
+      }
+    })
+
+    return glm(modelId)
+  }
+
+  // Configure Ollama (OpenAI-compatible) provider
+  const ollama = createOpenAICompatible({
+    name: 'ollama',
+    apiKey: 'ollama',
+    baseURL: getOllamaOpenAIBaseUrl(event)
   })
 
-  return glm(modelId)
+  return ollama(modelId)
+}
+
+/**
+ * Validates that a language model can be used for chat.
+ *
+ * Static provider models are validated against the shared static registry.
+ * Ollama models are validated against the live `/api/tags` response because
+ * local models can be added or removed while the app is running.
+ *
+ * @param model - The full model identifier (for example `ollama/llama3.2:latest`).
+ * @param event - The H3 event, used to access runtime configuration.
+ */
+export async function assertLanguageModelAvailable(model: string, event: H3Event): Promise<void> {
+  if (!isSupportedModel(model)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Unsupported model: ${model}`
+    })
+  }
+
+  if (isStaticModel(model)) {
+    return
+  }
+
+  const { provider, modelId } = splitProviderModel(model)
+
+  if (provider !== 'ollama') {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Unsupported model: ${model}`
+    })
+  }
+
+  try {
+    if (await hasOllamaModel(event, modelId)) {
+      return
+    }
+  } catch {
+    throw createError({
+      statusCode: 503,
+      statusMessage: 'Ollama is not available'
+    })
+  }
+
+  throw createError({
+    statusCode: 400,
+    statusMessage: `Ollama model is not available: ${modelId}`
+  })
 }

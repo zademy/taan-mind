@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import { parseOffice } from 'officeparser'
 import ExcelJS from 'exceljs'
 import { simpleParser } from 'mailparser'
+import { useOllamaClient } from './ollama'
 
 /** Response from the Ollama `/api/generate` endpoint. */
 interface OllamaGenerateResponse {
@@ -16,17 +17,6 @@ interface OllamaGenerateResponse {
   total_duration?: number
   /** Number of tokens evaluated during generation. */
   eval_count?: number
-}
-
-/** Response from the Ollama `/api/tags` endpoint listing available models. */
-interface _OllamaTagsResponse {
-  models: Array<{
-    name: string
-    model: string
-    size: number
-    digest: string
-    modified_at: string
-  }>
 }
 
 /** Represents the text extracted from a single page during OCR processing. */
@@ -84,12 +74,7 @@ export const TEXT_EXTRACTABLE_TYPES = new Set([
  * @throws Throws a 500 error if `NUXT_OLLAMA_BASE_URL` is not set.
  */
 export function useOcrClient(event: H3Event) {
-  const config = useRuntimeConfig(event)
-  const baseURL = config.ollamaBaseUrl
-  if (!baseURL) {
-    throw createError({ statusCode: 500, statusMessage: 'NUXT_OLLAMA_BASE_URL is not configured' })
-  }
-  return $fetch.create({ baseURL })
+  return useOllamaClient(event)
 }
 
 /**

@@ -1,3 +1,5 @@
+import { listOllamaModels } from '../../utils/ollama'
+
 /**
  * GET /api/ocr/models
  *
@@ -5,7 +7,13 @@
  * Proxies the response directly from the Ollama `/api/tags` endpoint.
  */
 export default defineEventHandler(async (event) => {
-  const client = useOcrClient(event)
-  const tags = await client<{ models: Array<{ name: string, size: number, modified_at: string }> }>('/api/tags')
-  return tags
+  const models = await listOllamaModels(event)
+
+  return {
+    models: models.map(model => ({
+      name: model.name,
+      size: model.size ?? 0,
+      modified_at: model.modified_at ?? ''
+    }))
+  }
 })

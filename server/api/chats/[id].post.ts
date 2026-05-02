@@ -3,6 +3,8 @@ import { convertToModelMessages, createUIMessageStream, createUIMessageStreamRes
 import { db, schema } from 'hub:db'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { isSupportedModel } from '#shared/utils/models'
+import { assertLanguageModelAvailable, resolveLanguageModel } from '../../utils/aiModels'
 
 defineRouteMeta({
   openAPI: {
@@ -30,11 +32,13 @@ export default defineEventHandler(async (event) => {
   }).parse)
 
   const { model, messages } = await readValidatedBody(event, z.object({
-    model: z.string().refine(value => MODELS.some(m => m.value === value), {
+    model: z.string().refine(isSupportedModel, {
       message: 'Invalid model'
     }),
     messages: z.array(z.custom<UIMessage>())
   }).parse)
+
+  await assertLanguageModelAvailable(model, event)
 
   // Verify the chat exists and belongs to the requesting user
   const chat = await db.query.chats.findFirst({
