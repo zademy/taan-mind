@@ -17,24 +17,7 @@ const totalDots = size * size
  * that should be active (visible) during that step.
  */
 const patterns = [
-  [
-    [0],
-    [1],
-    [2],
-    [3],
-    [7],
-    [11],
-    [15],
-    [14],
-    [13],
-    [12],
-    [8],
-    [4],
-    [5],
-    [6],
-    [10],
-    [9]
-  ],
+  [[0], [1], [2], [3], [7], [11], [15], [14], [13], [12], [8], [4], [5], [6], [10], [9]],
   [
     [0, 4, 8, 12],
     [1, 5, 9, 13],
@@ -104,9 +87,7 @@ onUnmounted(() => {
       v-for="i in totalDots"
       :key="i"
       class="rounded-sm bg-linear-to-br from-primary/80 to-primary/40 transition-all duration-150"
-      :class="
-        activeDots.has(i - 1) ? 'opacity-100 scale-100' : 'opacity-30 scale-75'
-      "
+      :class="activeDots.has(i - 1) ? 'opacity-100 scale-100' : 'opacity-30 scale-75'"
     />
   </div>
 </template>

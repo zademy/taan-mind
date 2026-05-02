@@ -30,7 +30,7 @@ export function useChats(chats: Ref<UIChat[] | undefined>) {
     const oneWeekAgo = subMonths(new Date(), 0.25) // ~7 days ago
     const oneMonthAgo = subMonths(new Date(), 1)
 
-    chats.value?.forEach((chat) => {
+    chats.value?.forEach(chat => {
       const chatDate = new Date(chat.createdAt)
 
       if (isToday(chatDate)) {
@@ -104,7 +104,7 @@ export function useChats(chats: Ref<UIChat[] | undefined>) {
     }
 
     // Add each month-year group
-    sortedMonthYears.forEach((monthYear) => {
+    sortedMonthYears.forEach(monthYear => {
       if (older[monthYear]?.length) {
         formattedGroups.push({
           id: monthYear,

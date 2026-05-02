@@ -5,7 +5,8 @@
   grouping, deletion, and navigation.
 -->
 <script setup lang="ts">
-import { LazyModalConfirm } from '#components'
+import type { DropdownMenuItem } from '@nuxt/ui'
+import { LazyModalConfirm, LazySettingsPersonalitiesModal } from '#components'
 
 const route = useRoute()
 const toast = useToast()
@@ -24,10 +25,29 @@ const CHAT_LOAD_INCREMENT = 40
 const deleteModal = overlay.create(LazyModalConfirm, {
   props: {
     title: 'Delete chat',
-    description:
-      'Are you sure you want to delete this chat? This cannot be undone.'
+    description: 'Are you sure you want to delete this chat? This cannot be undone.'
   }
 })
+
+/** Lazy-loaded settings modal for custom personality management. */
+const personalitiesModal = overlay.create(LazySettingsPersonalitiesModal)
+
+/** Opens the personalization settings modal from the sidebar menu. */
+function openPersonalizationSettings() {
+  open.value = false
+  personalitiesModal.open()
+}
+
+/** Sidebar settings menu items. */
+const settingsItems: DropdownMenuItem[][] = [
+  [
+    {
+      label: 'Personalization',
+      icon: 'i-lucide-sparkles',
+      onSelect: openPersonalizationSettings
+    }
+  ]
+]
 
 /**
  * Fetch all chats from the API and transform them into sidebar-compatible items.
@@ -66,24 +86,16 @@ const activeChatIndex = computed(() => {
  * It keeps the active chat visible even when opening an older chat directly.
  */
 const effectiveChatLimit = computed(() => {
-  const activeLimit
-    = activeChatIndex.value >= 0 ? activeChatIndex.value + 1 : 0
+  const activeLimit = activeChatIndex.value >= 0 ? activeChatIndex.value + 1 : 0
 
-  return Math.min(
-    totalChats.value,
-    Math.max(visibleChatLimit.value, activeLimit)
-  )
+  return Math.min(totalChats.value, Math.max(visibleChatLimit.value, activeLimit))
 })
 
 /** Chats currently rendered in the sidebar, newest first */
-const visibleChats = computed(() =>
-  chats.value?.slice(0, effectiveChatLimit.value)
-)
+const visibleChats = computed(() => chats.value?.slice(0, effectiveChatLimit.value))
 
 /** Remaining older chats hidden behind the incremental "show more" action */
-const hiddenChatCount = computed(() =>
-  Math.max(totalChats.value - effectiveChatLimit.value, 0)
-)
+const hiddenChatCount = computed(() => Math.max(totalChats.value - effectiveChatLimit.value, 0))
 
 /** Reveals the next batch of older chats in the sidebar */
 function showMoreChats() {
@@ -195,9 +207,7 @@ defineShortcuts({
           exact-active-class=""
           @click="open = false"
         >
-          <Logo
-            :class="collapsed ? 'h-8 w-8 shrink-0' : 'h-12 w-12 shrink-0'"
-          />
+          <Logo :class="collapsed ? 'h-8 w-8 shrink-0' : 'h-12 w-12 shrink-0'" />
           <span
             v-if="!collapsed"
             class="text-base text-highlighted tracking-widest uppercase font-cinzel"
@@ -242,10 +252,7 @@ defineShortcuts({
         </div>
 
         <!-- Grouped chat list (hidden when sidebar is collapsed) -->
-        <div
-          v-if="!collapsed"
-          class="mt-4 flex flex-col gap-4 overflow-y-auto scrollbar-hide"
-        >
+        <div v-if="!collapsed" class="mt-4 flex flex-col gap-4 overflow-y-auto scrollbar-hide">
           <!-- Empty state when there are no chats yet -->
           <div
             v-if="!hasChats"
@@ -256,23 +263,15 @@ defineShortcuts({
             >
               <UIcon name="i-lucide-message-circle-plus" class="size-5" />
             </div>
-            <p class="text-sm font-medium text-highlighted">
-              No chats yet
-            </p>
+            <p class="text-sm font-medium text-highlighted">No chats yet</p>
             <p class="mt-1 text-xs leading-5 text-muted">
               Start a new conversation and it will appear here.
             </p>
           </div>
 
-          <div
-            v-for="group in groups"
-            :key="group.id"
-            class="flex flex-col gap-1.5"
-          >
+          <div v-for="group in groups" :key="group.id" class="flex flex-col gap-1.5">
             <!-- Group label (e.g., "Today", "Yesterday") -->
-            <p
-              class="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted"
-            >
+            <p class="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
               {{ group.label }}
             </p>
 
@@ -346,7 +345,27 @@ defineShortcuts({
       </template>
 
       <template #footer="{ collapsed }">
-        <span v-if="!collapsed" class="text-xs text-dimmed px-2"> v1.0.1 </span>
+        <div class="flex w-full flex-col gap-2 px-2">
+          <UDropdownMenu
+            :items="settingsItems"
+            :content="{ side: 'top', align: 'start', sideOffset: 8 }"
+            :ui="{ content: 'min-w-56' }"
+          >
+            <UButton
+              icon="i-lucide-settings"
+              :label="collapsed ? undefined : 'Settings'"
+              color="neutral"
+              variant="ghost"
+              block
+              :class="[
+                'transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]',
+                !collapsed && 'justify-start'
+              ]"
+            />
+          </UDropdownMenu>
+
+          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.1 </span>
+        </div>
       </template>
     </UDashboardSidebar>
 

@@ -49,10 +49,8 @@ function initChat() {
   if (!data.value) return
   visibleMessageCount.value = 80
 
-  const shouldAutoSend
-    = import.meta.client
-      && data.value.isOwner
-      && data.value.messages.length === 1
+  const shouldAutoSend =
+    import.meta.client && data.value.isOwner && data.value.messages.length === 1
 
   const instance = new Chat({
     id: data.value.id,
@@ -66,7 +64,7 @@ function initChat() {
         }
       }
     }),
-    onData: (dataPart) => {
+    onData: dataPart => {
       if (dataPart.type === 'data-chat-title') {
         refreshNuxtData('chats')
       }
@@ -101,7 +99,7 @@ function initChat() {
 // Re-initialize chat whenever fetched data changes (new route = new data)
 watch(
   data,
-  (val) => {
+  val => {
     if (val) initChat()
     else chat.value = null
   },
@@ -137,7 +135,7 @@ function getMessageMemoKey(message: UIMessage) {
   }
 
   return message.parts
-    .map((part) => {
+    .map(part => {
       if ('text' in part && typeof part.text === 'string') {
         return `${part.type}:${part.text.length}:${part.text.slice(-16)}`
       }
@@ -150,9 +148,7 @@ function getMessageMemoKey(message: UIMessage) {
 }
 
 /** Computed flag indicating whether the user can submit a new message */
-const canSubmit = computed(
-  () => input.value.trim().length > 0 && chat.value?.status === 'ready'
-)
+const canSubmit = computed(() => input.value.trim().length > 0 && chat.value?.status === 'ready')
 
 /**
  * Handles form submission: sends the user's message and clears the input.
@@ -301,8 +297,8 @@ async function regenerateMessage(message: UIMessage) {
               <ChatMessageActions
                 :message="message"
                 :streaming="
-                  chat?.status === 'streaming'
-                    && message.id === chat?.messages[chat.messages.length - 1]?.id
+                  chat?.status === 'streaming' &&
+                  message.id === chat?.messages[chat.messages.length - 1]?.id
                 "
                 :editing="editingMessageId === message.id"
                 @edit="startEdit"
@@ -347,12 +343,7 @@ async function regenerateMessage(message: UIMessage) {
                 >
                   Document context #{{ data.documentId }}
                 </UBadge>
-                <UBadge
-                  v-else
-                  color="neutral"
-                  variant="subtle"
-                  icon="i-lucide-file-x-2"
-                >
+                <UBadge v-else color="neutral" variant="subtle" icon="i-lucide-file-x-2">
                   No document context
                 </UBadge>
               </div>
@@ -367,10 +358,7 @@ async function regenerateMessage(message: UIMessage) {
       v-else-if="status === 'error' || (status === 'success' && !data)"
       class="flex-1 flex flex-col gap-4 sm:gap-6"
     >
-      <UError
-        :error="{ statusMessage: 'Chat not found', statusCode: 404 }"
-        class="min-h-full"
-      />
+      <UError :error="{ statusMessage: 'Chat not found', statusCode: 404 }" class="min-h-full" />
     </UContainer>
   </div>
 </template>

@@ -39,11 +39,7 @@ interface OcrResult {
 }
 
 /** Image MIME types that can be converted to PNG for OCR processing (e.g., TIFF, GIF, BMP). */
-export const CONVERTIBLE_IMAGE_TYPES = new Set([
-  'image/tiff',
-  'image/gif',
-  'image/bmp'
-])
+export const CONVERTIBLE_IMAGE_TYPES = new Set(['image/tiff', 'image/gif', 'image/bmp'])
 
 /** Document MIME types that support direct text extraction without OCR (Office, TXT, CSV, EML, etc.). */
 export const TEXT_EXTRACTABLE_TYPES = new Set([
@@ -149,15 +145,19 @@ export async function extractTextFromDocument(buffer: Buffer, mimeType: string):
   // XLSX: parsed with ExcelJS (tabular data)
   if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer)
-    return workbook.worksheets.map((worksheet) => {
-      const rows: string[] = []
-      worksheet.eachRow({ includeEmpty: false }, (row) => {
-        const values = Array.isArray(row.values) ? row.values.slice(1) : []
-        rows.push(values.map(v => v ?? '').join('\t'))
+    await workbook.xlsx.load(
+      buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
+    )
+    return workbook.worksheets
+      .map(worksheet => {
+        const rows: string[] = []
+        worksheet.eachRow({ includeEmpty: false }, row => {
+          const values = Array.isArray(row.values) ? row.values.slice(1) : []
+          rows.push(values.map(v => v ?? '').join('\t'))
+        })
+        return `=== ${worksheet.name} ===\n${rows.join('\n')}`
       })
-      return `=== ${worksheet.name} ===\n${rows.join('\n')}`
-    }).join('\n\n')
+      .join('\n\n')
   }
   // XLS: parsed with officeparser
   if (mimeType === 'application/vnd.ms-excel') {

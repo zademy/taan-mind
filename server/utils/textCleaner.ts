@@ -34,7 +34,7 @@ const CHAR_REPLACEMENTS: [RegExp, string][] = [
   // Various dashes to standard hyphen
   [/[\u2013\u2014\u2015]/g, '-'],
   // Smart quotes to regular quotes
-  [/[\u2018\u2019\u201A]/g, '\''],
+  [/[\u2018\u2019\u201A]/g, "'"],
   [/[\u201C\u201D\u201E]/g, '"'],
   // Ellipsis character to three dots
   [/\u2026/g, '...'],

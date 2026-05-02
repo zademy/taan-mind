@@ -37,13 +37,7 @@ const editingText = ref(props.text)
 
     <!-- Action buttons: Cancel and Save -->
     <div class="flex gap-1.5 justify-end">
-      <UButton
-        size="sm"
-        variant="soft"
-        color="neutral"
-        label="Cancel"
-        @click="emit('cancel')"
-      />
+      <UButton size="sm" variant="soft" color="neutral" label="Cancel" @click="emit('cancel')" />
       <!-- Save is disabled when text is empty or unchanged -->
       <UButton
         size="sm"

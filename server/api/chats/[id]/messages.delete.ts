@@ -12,24 +12,27 @@ import { z } from 'zod'
  * - **regenerate**: Removes the target assistant message and everything after it,
  *   so the AI can generate a new response.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const userId = getChatUserId(event)
 
-  const { id } = await getValidatedRouterParams(event, z.object({
-    id: z.string()
-  }).parse)
+  const { id } = await getValidatedRouterParams(
+    event,
+    z.object({
+      id: z.string()
+    }).parse
+  )
 
-  const { messageId, type } = await readValidatedBody(event, z.object({
-    messageId: z.string(),
-    type: z.enum(['edit', 'regenerate'])
-  }).parse)
+  const { messageId, type } = await readValidatedBody(
+    event,
+    z.object({
+      messageId: z.string(),
+      type: z.enum(['edit', 'regenerate'])
+    }).parse
+  )
 
   // Verify the chat belongs to the requesting user
   const chat = await db.query.chats.findFirst({
-    where: () => and(
-      eq(schema.chats.id, id as string),
-      eq(schema.chats.userId, userId)
-    )
+    where: () => and(eq(schema.chats.id, id as string), eq(schema.chats.userId, userId))
   })
 
   if (!chat) {
@@ -37,7 +40,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // Load all messages ordered chronologically to determine deletion range
-  const allMessages = await db.select({ id: schema.messages.id, role: schema.messages.role })
+  const allMessages = await db
+    .select({ id: schema.messages.id, role: schema.messages.role })
     .from(schema.messages)
     .where(eq(schema.messages.chatId, id as string))
     .orderBy(asc(schema.messages.createdAt), asc(schema.messages.id))

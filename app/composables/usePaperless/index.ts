@@ -6,7 +6,13 @@
  */
 
 // Documents – CRUD, search, and URL helpers
-export { useDocuments, useDocument, useDocumentMutations, useDocumentSearch, useDocumentUrls } from './useDocuments'
+export {
+  useDocuments,
+  useDocument,
+  useDocumentMutations,
+  useDocumentSearch,
+  useDocumentUrls
+} from './useDocuments'
 
 // Tags – list, detail, and mutations
 export { useTags, useTag, useTagMutations } from './useTags'

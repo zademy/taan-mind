@@ -64,10 +64,9 @@ export function useDocuments(options: DocumentListOptions = {}) {
 
   const fetchFn = options.lazy ? useLazyFetch : useFetch
 
-  return fetchFn<PaperlessPaginatedResponse<PaperlessDocument>>(
-    '/api/paperless/documents',
-    { params }
-  )
+  return fetchFn<PaperlessPaginatedResponse<PaperlessDocument>>('/api/paperless/documents', {
+    params
+  })
 }
 
 /**
@@ -143,8 +142,7 @@ export function useDocumentMutations() {
       formData.append('correspondent', String(metadata.correspondent))
     if (metadata?.document_type != null)
       formData.append('document_type', String(metadata.document_type))
-    if (metadata?.tags?.length)
-      metadata.tags.forEach(tag => formData.append('tags', String(tag)))
+    if (metadata?.tags?.length) metadata.tags.forEach(tag => formData.append('tags', String(tag)))
 
     return $fetch('/api/paperless/documents/upload', {
       method: 'POST',

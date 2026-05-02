@@ -2,11 +2,7 @@
 export type ModelProvider = 'minimax' | 'glm' | 'ollama'
 
 /** Union of all statically configured model identifiers in `provider/modelId` format. */
-export type StaticModelId
-  = | 'minimax/MiniMax-M2.7'
-    | 'glm/glm-5'
-    | 'glm/glm-5.1'
-    | 'glm/glm-5-turbo'
+export type StaticModelId = 'minimax/MiniMax-M2.7' | 'glm/glm-5' | 'glm/glm-5.1' | 'glm/glm-5-turbo'
 
 /** Dynamic Ollama model identifier in `ollama/modelName` format. */
 export type OllamaModelId = `ollama/${string}`
@@ -36,7 +32,12 @@ export interface ModelsResponse {
 
 /** All available AI models selectable by the user. */
 export const MODELS: ModelOption[] = [
-  { label: 'MiniMax M2.7', value: 'minimax/MiniMax-M2.7', icon: 'i-lucide-brain-circuit', provider: 'minimax' },
+  {
+    label: 'MiniMax M2.7',
+    value: 'minimax/MiniMax-M2.7',
+    icon: 'i-lucide-brain-circuit',
+    provider: 'minimax'
+  },
   { label: 'GLM 5', value: 'glm/glm-5', icon: 'i-lucide-sparkles', provider: 'glm' },
   { label: 'GLM 5.1', value: 'glm/glm-5.1', icon: 'i-lucide-sparkles', provider: 'glm' },
   { label: 'GLM 5 Turbo', value: 'glm/glm-5-turbo', icon: 'i-lucide-bot', provider: 'glm' }

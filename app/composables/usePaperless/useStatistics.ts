@@ -8,7 +8,5 @@ import type { PaperlessStatistics } from '~~/shared/types/paperless'
  * @returns A `useLazyFetch` result with the statistics data.
  */
 export function usePaperlessStatistics() {
-  return useLazyFetch<PaperlessStatistics>(
-    '/api/paperless/statistics'
-  )
+  return useLazyFetch<PaperlessStatistics>('/api/paperless/statistics')
 }

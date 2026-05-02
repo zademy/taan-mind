@@ -76,7 +76,7 @@ async function loadDocuments(query?: string) {
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
 /** Debounces the search term changes to avoid excessive API calls */
-watch(searchTerm, (q) => {
+watch(searchTerm, q => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => loadDocuments(q), 300)
 })
@@ -104,8 +104,7 @@ const selectedIcon = 'i-lucide-file-text'
     class="data-[state=open]:bg-elevated"
     :ui="{
       content: 'min-w-48',
-      trailingIcon:
-        'group-data-[state=open]:rotate-180 transition-transform duration-200'
+      trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200'
     }"
   />
 </template>

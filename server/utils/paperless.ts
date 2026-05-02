@@ -52,7 +52,9 @@ export function usePaperlessClient(event: H3Event) {
  * @param params - Raw query parameters with possible empty values.
  * @returns A sanitized `Record<string, string>` suitable for `$fetch` queries.
  */
-export function buildPaperlessQuery(params: Record<string, string | number | boolean | undefined | null>): Record<string, string> {
+export function buildPaperlessQuery(
+  params: Record<string, string | number | boolean | undefined | null>
+): Record<string, string> {
   const query: Record<string, string> = {}
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {

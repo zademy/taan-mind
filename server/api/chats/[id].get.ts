@@ -11,12 +11,15 @@ import { z } from 'zod'
  * - Public chats are accessible by any authenticated user.
  * - The `userId` field is excluded from the response for privacy.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const userId = getChatUserId(event)
 
-  const { id } = await getValidatedRouterParams(event, z.object({
-    id: z.string()
-  }).parse)
+  const { id } = await getValidatedRouterParams(
+    event,
+    z.object({
+      id: z.string()
+    }).parse
+  )
 
   const chat = await db.query.chats.findFirst({
     where: () => eq(schema.chats.id, id as string),

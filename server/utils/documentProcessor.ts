@@ -24,7 +24,11 @@ export interface ExtractedMetadata {
  * @param event - The H3 event for runtime config access.
  * @returns The cleaned and formatted text.
  */
-export async function formatContentWithAI(rawText: string, documentTitle: string, event: H3Event): Promise<string> {
+export async function formatContentWithAI(
+  rawText: string,
+  documentTitle: string,
+  event: H3Event
+): Promise<string> {
   const model = resolveLanguageModel('minimax/MiniMax-M2.7', event)
 
   const { text } = await generateText({
@@ -52,7 +56,11 @@ Instructions:
  * @param event - The H3 event for runtime config access.
  * @returns Extracted metadata suggestions.
  */
-export async function extractMetadataWithAI(formattedContent: string, existingTitle: string, event: H3Event): Promise<ExtractedMetadata> {
+export async function extractMetadataWithAI(
+  formattedContent: string,
+  existingTitle: string,
+  event: H3Event
+): Promise<ExtractedMetadata> {
   const model = resolveLanguageModel('minimax/MiniMax-M2.7', event)
 
   const { text } = await generateText({

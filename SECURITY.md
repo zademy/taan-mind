@@ -15,9 +15,9 @@ Security-sensitive areas include:
 
 ## Version status
 
-| Version | Status |
-| ------- | ------ |
-| `2.x` | Maintained |
+| Version   | Status         |
+| --------- | -------------- |
+| `2.x`     | Maintained     |
 | `< 2.0.0` | Not maintained |
 
 ## Reporting a vulnerability

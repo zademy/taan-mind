@@ -7,7 +7,7 @@ import { eq, desc } from 'drizzle-orm'
  * Returns all chats belonging to the authenticated user,
  * ordered by creation date (newest first).
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const userId = getChatUserId(event)
   const { chats } = schema
 

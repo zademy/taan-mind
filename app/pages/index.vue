@@ -60,9 +60,7 @@ const quickChats = [
 ]
 
 /** Computed flag indicating whether the user can submit a message */
-const canSubmit = computed(
-  () => input.value.trim().length > 0 && !loading.value
-)
+const canSubmit = computed(() => input.value.trim().length > 0 && !loading.value)
 
 /**
  * Creates a new chat via the API and navigates to it.
@@ -100,11 +98,10 @@ async function createChat(prompt: string) {
     await navigateTo(`/chat/${chatId}`)
   } catch (error) {
     // Extract a user-friendly error message from the response
-    const description
-      = (error as { data?: { message?: string }, message?: string }).data
-        ?.message
-        || (error as { message?: string }).message
-        || 'Failed to create chat.'
+    const description =
+      (error as { data?: { message?: string }; message?: string }).data?.message ||
+      (error as { message?: string }).message ||
+      'Failed to create chat.'
 
     toast.add({
       description,
@@ -141,14 +138,10 @@ async function onSubmit(event?: Event) {
           />
         </div>
 
-        <UContainer
-          class="relative flex flex-col justify-center gap-6 sm:gap-8 py-12"
-        >
+        <UContainer class="relative flex flex-col justify-center gap-6 sm:gap-8 py-12">
           <!-- Dynamic greeting heading with gradient text -->
           <div class="space-y-2">
-            <h1
-              class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight"
-            >
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
               <span
                 class="bg-linear-to-r from-neutral-900 via-neutral-800 to-neutral-700 dark:from-neutral-100 dark:via-neutral-200 dark:to-neutral-300 bg-clip-text text-transparent"
               >
@@ -158,9 +151,7 @@ async function onSubmit(event?: Event) {
                 </ClientOnly>
               </span>
             </h1>
-            <p class="text-lg text-muted max-w-md">
-              How can I help you today?
-            </p>
+            <p class="text-lg text-muted max-w-md">How can I help you today?</p>
           </div>
 
           <!-- Message input form with glassmorphism styling -->
@@ -182,16 +173,11 @@ async function onSubmit(event?: Event) {
             />
 
             <!-- Bottom toolbar: model/personality selectors and send button -->
-            <div
-              class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-            >
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                 <ModelSelect aria-label="Select AI model" />
                 <PersonalitySelect aria-label="Select AI personality" />
-                <DocumentSelect
-                  v-model="selectedDocId"
-                  aria-label="Select document context"
-                />
+                <DocumentSelect v-model="selectedDocId" aria-label="Select document context" />
                 <UBadge
                   v-if="selectedDocId"
                   color="primary"
@@ -228,10 +214,7 @@ async function onSubmit(event?: Event) {
               :disabled="loading"
               @click="createChat(quickChat.label)"
             >
-              <span
-                :class="[quickChat.icon, 'quick-action-icon']"
-                aria-hidden="true"
-              />
+              <span :class="[quickChat.icon, 'quick-action-icon']" aria-hidden="true" />
               <span class="quick-action-label">{{ quickChat.label }}</span>
             </button>
           </div>

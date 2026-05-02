@@ -8,12 +8,12 @@ export interface Source {
 
 /** Grounding chunk structure returned by Google search results. */
 interface GoogleGroundingChunk {
-  web?: { uri?: string, title?: string }
+  web?: { uri?: string; title?: string }
 }
 
 /** Unified structure representing search tool output from different providers. */
 interface SearchOutput {
-  sources?: { url: string, type?: string }[]
+  sources?: { url: string; type?: string }[]
   groundingChunks?: GoogleGroundingChunk[]
   groundingMetadata?: { groundingChunks?: GoogleGroundingChunk[] }
 }

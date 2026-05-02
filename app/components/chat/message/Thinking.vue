@@ -46,7 +46,7 @@ if (props.streaming) {
 /** Watch for streaming state changes to start/stop the timer and toggle expansion */
 watch(
   () => props.streaming,
-  (val) => {
+  val => {
     if (val) {
       isExpanded.value = true
       startTimer()
@@ -85,11 +85,7 @@ function toggle() {
       @click="toggle"
     >
       <!-- Animated sparkles icon while actively thinking -->
-      <UIcon
-        v-if="streaming"
-        name="i-lucide-sparkles"
-        class="size-4 animate-pulse text-muted"
-      />
+      <UIcon v-if="streaming" name="i-lucide-sparkles" class="size-4 animate-pulse text-muted" />
       <!-- Chevron icon that rotates based on expanded state -->
       <UIcon
         v-else

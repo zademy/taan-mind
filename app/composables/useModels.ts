@@ -32,15 +32,19 @@ export function useModels() {
 
   // Runtime models are loaded asynchronously; wait for the API result before
   // deciding that a previously selected Ollama model is unavailable.
-  watch([models, status], () => {
-    if (status.value !== 'success') {
-      return
-    }
+  watch(
+    [models, status],
+    () => {
+      if (status.value !== 'success') {
+        return
+      }
 
-    if (!models.value.some(option => option.value === model.value)) {
-      model.value = DEFAULT_MODEL
-    }
-  }, { immediate: true })
+      if (!models.value.some(option => option.value === model.value)) {
+        model.value = DEFAULT_MODEL
+      }
+    },
+    { immediate: true }
+  )
 
   return {
     error,

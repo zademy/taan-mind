@@ -72,14 +72,7 @@ export interface CacheDocumentsResponse {
  * @returns A `useFetch` result with the paginated cache document list.
  */
 export function useCacheDocuments(options: CacheDocumentListOptions = {}) {
-  const {
-    page = 1,
-    pageSize = 25,
-    processed,
-    ordering = '-updated_at',
-    search,
-    mimeType
-  } = options
+  const { page = 1, pageSize = 25, processed, ordering = '-updated_at', search, mimeType } = options
 
   const params = computed(() => {
     const p: Record<string, string | number> = {

@@ -21,9 +21,14 @@ interface DocumentProcessorConfig {
  * @param token - The Paperless-ngx API authentication token.
  * @returns The numeric ID of the found or newly created correspondent.
  */
-async function findOrCreateCorrespondent(name: string, baseUrl: string, token: string): Promise<number> {
-  const response = await $fetch<{ results: Array<{ id: number, name: string }> }>(
-    `${baseUrl}/api/correspondents/`, {
+async function findOrCreateCorrespondent(
+  name: string,
+  baseUrl: string,
+  token: string
+): Promise<number> {
+  const response = await $fetch<{ results: Array<{ id: number; name: string }> }>(
+    `${baseUrl}/api/correspondents/`,
+    {
       headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
       query: { name__icontains: name }
     }
@@ -34,7 +39,11 @@ async function findOrCreateCorrespondent(name: string, baseUrl: string, token: s
 
   const created = await $fetch<{ id: number }>(`${baseUrl}/api/correspondents/`, {
     method: 'POST',
-    headers: { 'Authorization': `Token ${token}`, 'Accept': 'application/json; version=5', 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Token ${token}`,
+      Accept: 'application/json; version=5',
+      'Content-Type': 'application/json'
+    },
     body: { name }
   })
   return created.id
@@ -48,9 +57,14 @@ async function findOrCreateCorrespondent(name: string, baseUrl: string, token: s
  * @param token - The Paperless-ngx API authentication token.
  * @returns The numeric ID of the found or newly created document type.
  */
-async function findOrCreateDocumentType(name: string, baseUrl: string, token: string): Promise<number> {
-  const response = await $fetch<{ results: Array<{ id: number, name: string }> }>(
-    `${baseUrl}/api/document_types/`, {
+async function findOrCreateDocumentType(
+  name: string,
+  baseUrl: string,
+  token: string
+): Promise<number> {
+  const response = await $fetch<{ results: Array<{ id: number; name: string }> }>(
+    `${baseUrl}/api/document_types/`,
+    {
       headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
       query: { name__icontains: name }
     }
@@ -61,7 +75,11 @@ async function findOrCreateDocumentType(name: string, baseUrl: string, token: st
 
   const created = await $fetch<{ id: number }>(`${baseUrl}/api/document_types/`, {
     method: 'POST',
-    headers: { 'Authorization': `Token ${token}`, 'Accept': 'application/json; version=5', 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Token ${token}`,
+      Accept: 'application/json; version=5',
+      'Content-Type': 'application/json'
+    },
     body: { name }
   })
   return created.id
@@ -80,7 +98,8 @@ async function findOrCreateDocumentType(name: string, baseUrl: string, token: st
 async function getNextASN(baseUrl: string, token: string): Promise<number> {
   // Get documents ordered by ASN descending, limit 1
   const response = await $fetch<{ results: Array<{ archive_serial_number: number | null }> }>(
-    `${baseUrl}/api/documents/`, {
+    `${baseUrl}/api/documents/`,
+    {
       headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
       query: { ordering: '-archive_serial_number', page_size: 1 }
     }
@@ -101,11 +120,16 @@ async function getNextASN(baseUrl: string, token: string): Promise<number> {
  * @param token - The Paperless-ngx API authentication token.
  * @returns An array of numeric tag IDs in the same order as the input names.
  */
-async function findOrCreateTags(names: string[], baseUrl: string, token: string): Promise<number[]> {
+async function findOrCreateTags(
+  names: string[],
+  baseUrl: string,
+  token: string
+): Promise<number[]> {
   const tagIds: number[] = []
 
-  const response = await $fetch<{ results: Array<{ id: number, name: string }> }>(
-    `${baseUrl}/api/tags/?page_size=500`, {
+  const response = await $fetch<{ results: Array<{ id: number; name: string }> }>(
+    `${baseUrl}/api/tags/?page_size=500`,
+    {
       headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' }
     }
   )
@@ -117,7 +141,11 @@ async function findOrCreateTags(names: string[], baseUrl: string, token: string)
     } else {
       const created = await $fetch<{ id: number }>(`${baseUrl}/api/tags/`, {
         method: 'POST',
-        headers: { 'Authorization': `Token ${token}`, 'Accept': 'application/json; version=5', 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Token ${token}`,
+          Accept: 'application/json; version=5',
+          'Content-Type': 'application/json'
+        },
         body: { name }
       })
       tagIds.push(created.id)
@@ -140,7 +168,7 @@ async function findOrCreateTags(names: string[], baseUrl: string, token: string)
  * 7. PATCH Paperless (only empty fields)
  * 8. Mark as done (processed=1)
  */
-export default defineNitroPlugin((nitroApp) => {
+export default defineNitroPlugin(nitroApp => {
   let intervalId: ReturnType<typeof setInterval> | null = null
   let isProcessing = false
   let started = false
@@ -155,7 +183,9 @@ export default defineNitroPlugin((nitroApp) => {
     const baseUrl = config.paperlessBaseUrl?.replace(/\/+$/, '')
     const token = config.paperlessApiToken
     if (!baseUrl || !token) {
-      consola.warn('[Document Processor] Not configured (NUXT_PAPERLESS_BASE_URL or NUXT_PAPERLESS_API_TOKEN is missing)')
+      consola.warn(
+        '[Document Processor] Not configured (NUXT_PAPERLESS_BASE_URL or NUXT_PAPERLESS_API_TOKEN is missing)'
+      )
       return
     }
 
@@ -171,7 +201,12 @@ export default defineNitroPlugin((nitroApp) => {
         const [doc] = await db
           .select()
           .from(schema.paperlessDocuments)
-          .where(or(eq(schema.paperlessDocuments.processed, 0), eq(schema.paperlessDocuments.processed, 2)))
+          .where(
+            or(
+              eq(schema.paperlessDocuments.processed, 0),
+              eq(schema.paperlessDocuments.processed, 2)
+            )
+          )
           .orderBy(asc(schema.paperlessDocuments.paperlessCreated))
           .limit(1)
 
@@ -185,16 +220,25 @@ export default defineNitroPlugin((nitroApp) => {
         // 2. Mark as in-progress
         await db
           .update(schema.paperlessDocuments)
-          .set({ processed: 2, processingStartedAt: new Date(), processingCompletedAt: null, updatedAt: new Date() })
+          .set({
+            processed: 2,
+            processingStartedAt: new Date(),
+            processingCompletedAt: null,
+            updatedAt: new Date()
+          })
           .where(eq(schema.paperlessDocuments.id, doc.id))
 
         // 3-4. Download file + Run OCR via internal API
-        consola.info(`[Document Processor] Doc #${doc.id} — Downloading and processing OCR with GLM...`)
+        consola.info(
+          `[Document Processor] Doc #${doc.id} — Downloading and processing OCR with GLM...`
+        )
         const ocrResult = await $fetch(`/api/paperless/documents/${doc.id}/ocr`, {
           method: 'POST',
           baseURL: '/'
         })
-        consola.info(`[Document Processor] Doc #${doc.id} — OCR completed: ${ocrResult.ocr.totalPages} pages extracted (${ocrResult.ocr.pages.reduce((acc: number, p: { text: string }) => acc + p.text.length, 0)} characters)`)
+        consola.info(
+          `[Document Processor] Doc #${doc.id} — OCR completed: ${ocrResult.ocr.totalPages} pages extracted (${ocrResult.ocr.pages.reduce((acc: number, p: { text: string }) => acc + p.text.length, 0)} characters)`
+        )
 
         const ocrText = ocrResult.ocr.pages.map((p: { text: string }) => p.text).join('\n\n')
         const ocrMethod = ocrResult.method
@@ -209,9 +253,13 @@ export default defineNitroPlugin((nitroApp) => {
           .where(eq(schema.paperlessDocuments.id, doc.id))
 
         // 6. Format content with AI
-        consola.info(`[Document Processor] Doc #${doc.id} — Formatting content with MiniMax M2.7...`)
+        consola.info(
+          `[Document Processor] Doc #${doc.id} — Formatting content with MiniMax M2.7...`
+        )
         const aiContent = await formatWithAI(cleanedOcrText, doc.title, config)
-        consola.info(`[Document Processor] Doc #${doc.id} — Content formatted (${aiContent.length} characters)`)
+        consola.info(
+          `[Document Processor] Doc #${doc.id} — Content formatted (${aiContent.length} characters)`
+        )
 
         // Clean the AI-formatted content
         const cleanedAiContent = cleanText(aiContent)
@@ -223,24 +271,34 @@ export default defineNitroPlugin((nitroApp) => {
           .where(eq(schema.paperlessDocuments.id, doc.id))
 
         // 8. Extract metadata with AI
-        consola.info(`[Document Processor] Doc #${doc.id} — Extracting metadata with MiniMax M2.7...`)
+        consola.info(
+          `[Document Processor] Doc #${doc.id} — Extracting metadata with MiniMax M2.7...`
+        )
         const metadata = await extractMetadata(cleanedAiContent, doc.title, config)
-        consola.info(`[Document Processor] Doc #${doc.id} — Metadata extracted: ${JSON.stringify(metadata)}`)
+        consola.info(
+          `[Document Processor] Doc #${doc.id} — Metadata extracted: ${JSON.stringify(metadata)}`
+        )
 
         // 9. Get current document from Paperless to check empty fields
         consola.info(`[Document Processor] Doc #${doc.id} — Querying Paperless for empty fields...`)
-        const paperlessDoc = await $fetch<PaperlessDocument>(`${baseUrl}/api/documents/${doc.id}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-            Accept: 'application/json; version=5'
+        const paperlessDoc = await $fetch<PaperlessDocument>(
+          `${baseUrl}/api/documents/${doc.id}/`,
+          {
+            headers: {
+              Authorization: `Token ${token}`,
+              Accept: 'application/json; version=5'
+            }
           }
-        })
+        )
 
         // 10. Build PATCH payload — ONLY fill empty/null fields, NEVER overwrite
         const patchBody: Record<string, string | number | number[] | null> = {}
 
         // Title: update if empty or same as filename
-        if ((!paperlessDoc.title || paperlessDoc.title === doc.originalFileName) && metadata.suggestedTitle) {
+        if (
+          (!paperlessDoc.title || paperlessDoc.title === doc.originalFileName) &&
+          metadata.suggestedTitle
+        ) {
           patchBody.title = metadata.suggestedTitle
           consola.info(`[Document Processor] Doc #${doc.id} — Title: "${metadata.suggestedTitle}"`)
         }
@@ -248,22 +306,40 @@ export default defineNitroPlugin((nitroApp) => {
         // Correspondent: resolve name to ID, only if document has no correspondent
         if (!paperlessDoc.correspondent && metadata.suggestedCorrespondent) {
           try {
-            const correspondentId = await findOrCreateCorrespondent(metadata.suggestedCorrespondent, baseUrl, token)
+            const correspondentId = await findOrCreateCorrespondent(
+              metadata.suggestedCorrespondent,
+              baseUrl,
+              token
+            )
             patchBody.correspondent = correspondentId
-            consola.info(`[Document Processor] Doc #${doc.id} — Correspondent: "${metadata.suggestedCorrespondent}" (ID: ${correspondentId})`)
+            consola.info(
+              `[Document Processor] Doc #${doc.id} — Correspondent: "${metadata.suggestedCorrespondent}" (ID: ${correspondentId})`
+            )
           } catch (e) {
-            consola.warn(`[Document Processor] Doc #${doc.id} — Error resolving correspondent:`, e instanceof Error ? e.message : e)
+            consola.warn(
+              `[Document Processor] Doc #${doc.id} — Error resolving correspondent:`,
+              e instanceof Error ? e.message : e
+            )
           }
         }
 
         // Document Type: resolve name to ID, only if document has no type
         if (!paperlessDoc.document_type && metadata.suggestedDocumentType) {
           try {
-            const docTypeId = await findOrCreateDocumentType(metadata.suggestedDocumentType, baseUrl, token)
+            const docTypeId = await findOrCreateDocumentType(
+              metadata.suggestedDocumentType,
+              baseUrl,
+              token
+            )
             patchBody.document_type = docTypeId
-            consola.info(`[Document Processor] Doc #${doc.id} — Document Type: "${metadata.suggestedDocumentType}" (ID: ${docTypeId})`)
+            consola.info(
+              `[Document Processor] Doc #${doc.id} — Document Type: "${metadata.suggestedDocumentType}" (ID: ${docTypeId})`
+            )
           } catch (e) {
-            consola.warn(`[Document Processor] Doc #${doc.id} — Error resolving document type:`, e instanceof Error ? e.message : e)
+            consola.warn(
+              `[Document Processor] Doc #${doc.id} — Error resolving document type:`,
+              e instanceof Error ? e.message : e
+            )
           }
         }
 
@@ -275,10 +351,15 @@ export default defineNitroPlugin((nitroApp) => {
             const mergedTags = [...new Set([...existingTagIds, ...newTagIds])]
             if (mergedTags.length > existingTagIds.length) {
               patchBody.tags = mergedTags
-              consola.info(`[Document Processor] Doc #${doc.id} — Tags: ${metadata.suggestedTags.join(', ')} (IDs: ${newTagIds.join(', ')})`)
+              consola.info(
+                `[Document Processor] Doc #${doc.id} — Tags: ${metadata.suggestedTags.join(', ')} (IDs: ${newTagIds.join(', ')})`
+              )
             }
           } catch (e) {
-            consola.warn(`[Document Processor] Doc #${doc.id} — Error resolving tags:`, e instanceof Error ? e.message : e)
+            consola.warn(
+              `[Document Processor] Doc #${doc.id} — Error resolving tags:`,
+              e instanceof Error ? e.message : e
+            )
           }
         }
 
@@ -292,13 +373,18 @@ export default defineNitroPlugin((nitroApp) => {
               query: { archive_serial_number: candidateASN, page_size: 1 }
             })
             if (checkExisting.count > 0) {
-              consola.warn(`[Document Processor] Doc #${doc.id} — ASN ${candidateASN} already exists, skipping ASN assignment`)
+              consola.warn(
+                `[Document Processor] Doc #${doc.id} — ASN ${candidateASN} already exists, skipping ASN assignment`
+              )
             } else {
               patchBody.archive_serial_number = candidateASN
               consola.info(`[Document Processor] Doc #${doc.id} — ASN: ${candidateASN}`)
             }
           } catch (e) {
-            consola.warn(`[Document Processor] Doc #${doc.id} — Error generating ASN:`, e instanceof Error ? e.message : e)
+            consola.warn(
+              `[Document Processor] Doc #${doc.id} — Error generating ASN:`,
+              e instanceof Error ? e.message : e
+            )
           }
         }
 
@@ -310,12 +396,15 @@ export default defineNitroPlugin((nitroApp) => {
         // 11. PATCH Paperless if there are changes
         if (Object.keys(patchBody).length > 0) {
           try {
-            consola.info(`[Document Processor] Doc #${doc.id} — PATCH payload:`, JSON.stringify(patchBody))
+            consola.info(
+              `[Document Processor] Doc #${doc.id} — PATCH payload:`,
+              JSON.stringify(patchBody)
+            )
             await $fetch(`${baseUrl}/api/documents/${doc.id}/`, {
               method: 'PATCH',
               headers: {
-                'Authorization': `Token ${token}`,
-                'Accept': 'application/json; version=5',
+                Authorization: `Token ${token}`,
+                Accept: 'application/json; version=5',
                 'Content-Type': 'application/json'
               },
               body: patchBody
@@ -328,21 +417,30 @@ export default defineNitroPlugin((nitroApp) => {
               await $fetch(`${baseUrl}/api/documents/${doc.id}/notes/`, {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Token ${token}`,
-                  'Accept': 'application/json; version=5',
+                  Authorization: `Token ${token}`,
+                  Accept: 'application/json; version=5',
                   'Content-Type': 'application/json'
                 },
                 body: { note: noteText }
               })
               consola.info(`[Document Processor] Doc #${doc.id} — Note added`)
             } catch (e) {
-              consola.warn(`[Document Processor] Doc #${doc.id} — Error adding note:`, e instanceof Error ? e.message : e)
+              consola.warn(
+                `[Document Processor] Doc #${doc.id} — Error adding note:`,
+                e instanceof Error ? e.message : e
+              )
             }
           } catch (patchError: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const errData = (patchError as any)?.data || (patchError as any)?.cause || (patchError instanceof Error ? patchError.message : patchError)
+            const patchErrorRecord = patchError as { data?: unknown; cause?: unknown }
+            const errData =
+              patchErrorRecord.data ||
+              patchErrorRecord.cause ||
+              (patchError instanceof Error ? patchError.message : patchError)
             consola.error(`[Document Processor] Doc #${doc.id} — PATCH failed:`, errData)
-            consola.error(`[Document Processor] Doc #${doc.id} — PATCH payload was:`, JSON.stringify(patchBody))
+            consola.error(
+              `[Document Processor] Doc #${doc.id} — PATCH payload was:`,
+              JSON.stringify(patchBody)
+            )
             // Don't re-throw — mark as processed anyway since OCR content was saved
           }
         }
@@ -360,10 +458,13 @@ export default defineNitroPlugin((nitroApp) => {
         // Reset to pending for retry
         if (processingDocId !== undefined) {
           try {
-            await db.update(schema.paperlessDocuments)
+            await db
+              .update(schema.paperlessDocuments)
               .set({ processed: 0, updatedAt: new Date() })
               .where(eq(schema.paperlessDocuments.id, processingDocId))
-          } catch { /* ignore recovery errors */ }
+          } catch {
+            /* ignore recovery errors */
+          }
         }
       } finally {
         isProcessing = false
@@ -394,7 +495,11 @@ export default defineNitroPlugin((nitroApp) => {
  * @param config - Runtime configuration with MiniMax credentials.
  * @returns The cleaned and formatted text string.
  */
-async function formatWithAI(rawText: string, documentTitle: string, config: DocumentProcessorConfig): Promise<string> {
+async function formatWithAI(
+  rawText: string,
+  documentTitle: string,
+  config: DocumentProcessorConfig
+): Promise<string> {
   if (!config.minimaxApiKey?.trim()) {
     throw new Error('MINIMAX_API_KEY is not configured')
   }
@@ -436,7 +541,11 @@ Instructions:
  * @param config - Runtime configuration with MiniMax credentials.
  * @returns Extracted metadata suggestions (all fields optional).
  */
-async function extractMetadata(formattedContent: string, existingTitle: string, config: DocumentProcessorConfig): Promise<{
+async function extractMetadata(
+  formattedContent: string,
+  existingTitle: string,
+  config: DocumentProcessorConfig
+): Promise<{
   suggestedTitle?: string
   suggestedTags?: string[]
   suggestedCorrespondent?: string

@@ -22,7 +22,7 @@ export default defineEventHandler(async (event): Promise<PaperlessTag> => {
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number, statusMessage?: string }
+    const err = error as { statusCode?: number; statusMessage?: string }
     throw createError({
       statusCode: err?.statusCode || 502,
       statusMessage: err?.statusMessage || 'Failed to create tag in Paperless'

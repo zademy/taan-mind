@@ -12,7 +12,7 @@ import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
  * fields (`ocrContent` and `aiContent`). Those fields are only needed for
  * chat/document processing flows and should not be shipped to table views.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const query = getQuery(event)
   const page = Math.max(1, Number(query.page) || 1)
   const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 25))
@@ -28,12 +28,7 @@ export default defineEventHandler(async (event) => {
   const conditions = [isNull(t.deletedAt)]
   if (processed !== undefined) conditions.push(eq(t.processed, processed))
   if (search) {
-    conditions.push(
-      or(
-        like(t.title, `%${search}%`),
-        like(t.originalFileName, `%${search}%`)
-      )!
-    )
+    conditions.push(or(like(t.title, `%${search}%`), like(t.originalFileName, `%${search}%`))!)
   }
   if (mimeType) conditions.push(eq(t.mimeType, mimeType))
   const where = conditions.length ? and(...conditions) : undefined
@@ -61,23 +56,25 @@ export default defineEventHandler(async (event) => {
   const [total] = await db.select({ value: count() }).from(t).where(where)
 
   // Get paginated metadata only. Avoid shipping OCR/AI text content to list UIs.
-  const results = await db.select({
-    id: t.id,
-    title: t.title,
-    correspondent: t.correspondent,
-    documentType: t.documentType,
-    storagePath: t.storagePath,
-    originalFileName: t.originalFileName,
-    mimeType: t.mimeType,
-    pageCount: t.pageCount,
-    processed: t.processed,
-    processingStartedAt: t.processingStartedAt,
-    processingCompletedAt: t.processingCompletedAt,
-    paperlessCreated: t.paperlessCreated,
-    paperlessModified: t.paperlessModified,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt
-  }).from(t)
+  const results = await db
+    .select({
+      id: t.id,
+      title: t.title,
+      correspondent: t.correspondent,
+      documentType: t.documentType,
+      storagePath: t.storagePath,
+      originalFileName: t.originalFileName,
+      mimeType: t.mimeType,
+      pageCount: t.pageCount,
+      processed: t.processed,
+      processingStartedAt: t.processingStartedAt,
+      processingCompletedAt: t.processingCompletedAt,
+      paperlessCreated: t.paperlessCreated,
+      paperlessModified: t.paperlessModified,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt
+    })
+    .from(t)
     .where(where)
     .orderBy(orderFn)
     .limit(pageSize)

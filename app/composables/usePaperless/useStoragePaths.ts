@@ -29,10 +29,10 @@ export function useStoragePaths(options: StoragePathListOptions = {}) {
 
   const fetcher = options.lazy ? useLazyFetch : useFetch
 
-  return fetcher<PaperlessPaginatedResponse<PaperlessStoragePath>>(
-    '/api/paperless/storage-paths',
-    { query, watch: [query] }
-  )
+  return fetcher<PaperlessPaginatedResponse<PaperlessStoragePath>>('/api/paperless/storage-paths', {
+    query,
+    watch: [query]
+  })
 }
 
 /**

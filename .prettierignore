@@ -1,0 +1,23 @@
+node_modules
+.nuxt
+.output
+dist
+coverage
+.pnpm-store
+
+# Generated/cache artifacts
+graphify-out
+.codebase-wiki
+.pi
+.pi-lens
+.qoder
+*.log
+
+# Agent/project instruction files are hand-authored prompts.
+AGENTS.md
+
+# Package-manager generated files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+bun.lockb

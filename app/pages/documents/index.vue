@@ -108,7 +108,7 @@ const typeFilter = ref<string>('all')
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
 
 /** Debounces search input by 300ms and resets to page 1 */
-watch(searchQuery, (val) => {
+watch(searchQuery, val => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     debouncedSearch.value = val || undefined
@@ -134,9 +134,7 @@ const { data, status, refresh } = useCacheDocuments({
   ordering: '-updated_at',
   search: debouncedSearch,
   processed: processedFilter,
-  mimeType: computed(() =>
-    typeFilter.value === 'all' ? undefined : typeFilter.value
-  )
+  mimeType: computed(() => (typeFilter.value === 'all' ? undefined : typeFilter.value))
 })
 
 /** Whether the initial data fetch is still in progress */
@@ -184,8 +182,7 @@ const typeOptions = [
   { label: 'PDF', value: 'application/pdf' },
   {
     label: 'DOCX',
-    value:
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   },
   { label: 'DOC', value: 'application/msword' },
   { label: 'ODT', value: 'application/vnd.oasis.opendocument.text' },
@@ -218,12 +215,10 @@ const pageSizeStr = ref('25')
 const tableSkeletonRows = Array.from({ length: 6 }, (_, index) => index)
 
 /** Shows skeletons only for the initial table load, not for background refreshes */
-const showTableSkeleton = computed(
-  () => loading.value && !data.value?.results?.length
-)
+const showTableSkeleton = computed(() => loading.value && !data.value?.results?.length)
 
 /** Updates the numeric page size and resets to page 1 when changed */
-watch(pageSizeStr, (val) => {
+watch(pageSizeStr, val => {
   pageSize.value = Number(val)
   page.value = 1
 })
@@ -248,8 +243,7 @@ function mimeLabel(mime: string | null): string {
   if (!mime) return '—'
   const map: Record<string, string> = {
     'application/pdf': 'PDF',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-      'DOCX',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
     'application/msword': 'DOC',
     'application/vnd.oasis.opendocument.text': 'ODT',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
@@ -325,12 +319,7 @@ const columns: TableColumn<CacheDocument>[] = [
         td: 'hidden sm:table-cell w-16 text-right'
       }
     },
-    cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'font-mono text-xs text-muted' },
-        `${row.getValue('id')}`
-      )
+    cell: ({ row }) => h('span', { class: 'font-mono text-xs text-muted' }, `${row.getValue('id')}`)
   },
   {
     accessorKey: 'title',
@@ -399,8 +388,7 @@ const columns: TableColumn<CacheDocument>[] = [
     },
     cell: ({ row }) => {
       const val = row.getValue('processed')
-      const label
-        = val === 1 ? 'Processed' : val === 2 ? 'Processing' : 'Pending'
+      const label = val === 1 ? 'Processed' : val === 2 ? 'Processing' : 'Pending'
       const color = val === 1 ? 'success' : val === 2 ? 'warning' : 'neutral'
       return h(
         UBadge,
@@ -427,11 +415,7 @@ const columns: TableColumn<CacheDocument>[] = [
       const doc = row.original
       const duration = formatDuration(doc)
       if (doc.processed === 2 && !doc.processingCompletedAt) {
-        return h(
-          UBadge,
-          { variant: 'subtle', color: 'info', size: 'sm' },
-          () => 'In progress...'
-        )
+        return h(UBadge, { variant: 'subtle', color: 'info', size: 'sm' }, () => 'In progress...')
       }
       return h('span', { class: 'text-sm text-muted' }, duration)
     }
@@ -447,11 +431,7 @@ const columns: TableColumn<CacheDocument>[] = [
       }
     },
     cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'text-sm text-muted' },
-        formatDate(row.getValue('paperlessModified'))
-      )
+      h('span', { class: 'text-sm text-muted' }, formatDate(row.getValue('paperlessModified')))
   },
   {
     accessorKey: 'actions',
@@ -471,26 +451,26 @@ const columns: TableColumn<CacheDocument>[] = [
       const busy = isProcessing || isReprocessing || isDeleting
       return h('div', { class: 'flex items-center justify-center gap-1' }, [
         h(UButton, {
-          'icon': 'i-lucide-refresh-cw',
-          'size': 'xs',
-          'variant': 'ghost',
-          'color': 'neutral',
-          'title': 'Reprocess',
+          icon: 'i-lucide-refresh-cw',
+          size: 'xs',
+          variant: 'ghost',
+          color: 'neutral',
+          title: 'Reprocess',
           'aria-label': `Reprocess document ${id}`,
-          'disabled': busy,
-          'loading': isReprocessing,
-          'onClick': () => reprocessDocument(id)
+          disabled: busy,
+          loading: isReprocessing,
+          onClick: () => reprocessDocument(id)
         }),
         h(UButton, {
-          'icon': 'i-lucide-trash-2',
-          'size': 'xs',
-          'variant': 'ghost',
-          'color': 'error',
-          'title': 'Delete from cache',
+          icon: 'i-lucide-trash-2',
+          size: 'xs',
+          variant: 'ghost',
+          color: 'error',
+          title: 'Delete from cache',
           'aria-label': `Delete document ${id} from cache`,
-          'disabled': busy,
-          'loading': isDeleting,
-          'onClick': () => confirmDelete(id)
+          disabled: busy,
+          loading: isDeleting,
+          onClick: () => confirmDelete(id)
         })
       ])
     }
@@ -509,11 +489,9 @@ const columns: TableColumn<CacheDocument>[] = [
         <!-- Page title and document count -->
         <div>
           <div>
-            <h1 class="text-xl font-semibold text-highlighted">
-              Documents
-            </h1>
+            <h1 class="text-xl font-semibold text-highlighted">Documents</h1>
             <p v-if="data" class="text-sm text-muted mt-0.5">
-              {{ data.count }} document{{ data.count !== 1 ? "s" : "" }}
+              {{ data.count }} document{{ data.count !== 1 ? 's' : '' }}
             </p>
           </div>
         </div>
@@ -522,12 +500,8 @@ const columns: TableColumn<CacheDocument>[] = [
         <DocumentsStats />
 
         <!-- Toolbar: page size, search, status filter, type filter, and refresh -->
-        <div
-          class="flex flex-col gap-3 pb-3 border-b border-default lg:flex-row lg:items-center"
-        >
-          <div
-            class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:flex-nowrap"
-          >
+        <div class="flex flex-col gap-3 pb-3 border-b border-default lg:flex-row lg:items-center">
+          <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:flex-nowrap">
             <USelect
               v-model="pageSizeStr"
               :items="pageSizeOptions"
@@ -570,10 +544,7 @@ const columns: TableColumn<CacheDocument>[] = [
         </div>
 
         <!-- Documents data table -->
-        <div
-          v-if="showTableSkeleton"
-          class="overflow-hidden rounded-xl ring-1 ring-default/50"
-        >
+        <div v-if="showTableSkeleton" class="overflow-hidden rounded-xl ring-1 ring-default/50">
           <div
             v-for="row in tableSkeletonRows"
             :key="row"
@@ -607,9 +578,7 @@ const columns: TableColumn<CacheDocument>[] = [
           class="flex flex-col items-center justify-center py-12 text-center"
         >
           <UIcon name="i-lucide-file-search" class="size-10 text-muted mb-3" />
-          <p class="text-sm text-muted">
-            No documents found matching your filters.
-          </p>
+          <p class="text-sm text-muted">No documents found matching your filters.</p>
         </div>
 
         <!-- Footer: results summary and pagination controls -->
@@ -618,8 +587,7 @@ const columns: TableColumn<CacheDocument>[] = [
           class="flex flex-col gap-3 pt-4 border-t border-default sm:flex-row sm:items-center sm:justify-between"
         >
           <p class="text-sm text-muted">
-            Showing {{ resultsFrom }}–{{ resultsTo }} of
-            {{ data.count }} documents
+            Showing {{ resultsFrom }}–{{ resultsTo }} of {{ data.count }} documents
           </p>
 
           <UPagination

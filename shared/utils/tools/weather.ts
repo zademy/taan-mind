@@ -9,13 +9,14 @@ export type WeatherUIToolInvocation = UIToolInvocation<typeof weatherTool>
  * Maps a weather condition key to its display text and Lucide icon.
  * Falls back to 'Sunny' for unknown conditions.
  */
-const getWeatherData = (k: string) => ({
-  'sunny': { text: 'Sunny', icon: 'i-lucide-sun' },
-  'partly-cloudy': { text: 'Partly Cloudy', icon: 'i-lucide-cloud-sun' },
-  'cloudy': { text: 'Cloudy', icon: 'i-lucide-cloud' },
-  'rainy': { text: 'Rainy', icon: 'i-lucide-cloud-rain' },
-  'foggy': { text: 'Foggy', icon: 'i-lucide-cloud-fog' }
-}[k] || { text: 'Sunny', icon: 'i-lucide-sun' })
+const getWeatherData = (k: string) =>
+  ({
+    sunny: { text: 'Sunny', icon: 'i-lucide-sun' },
+    'partly-cloudy': { text: 'Partly Cloudy', icon: 'i-lucide-cloud-sun' },
+    cloudy: { text: 'Cloudy', icon: 'i-lucide-cloud' },
+    rainy: { text: 'Rainy', icon: 'i-lucide-cloud-rain' },
+    foggy: { text: 'Foggy', icon: 'i-lucide-cloud-fog' }
+  })[k] || { text: 'Sunny', icon: 'i-lucide-sun' }
 
 /**
  * AI tool for retrieving weather information with a 5-day forecast.
@@ -44,7 +45,9 @@ export const weatherTool = tool({
         day,
         high: Math.round(temp + Math.random() * 8 - 2),
         low: Math.round(temp - Math.random() * 8 - 3),
-        condition: getWeatherData(conds[(Math.floor(Math.random() * conds.length) + i) % conds.length]!)
+        condition: getWeatherData(
+          conds[(Math.floor(Math.random() * conds.length) + i) % conds.length]!
+        )
       }))
     }
   }

@@ -6,7 +6,7 @@ import { listOllamaModels } from '../../utils/ollama'
  * Checks whether the Ollama OCR service is reachable and the configured
  * model is available. Returns status, model name, and availability flag.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   try {
     const model = getOcrModel(event)
     const models = await listOllamaModels(event)

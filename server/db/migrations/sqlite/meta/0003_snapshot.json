@@ -55,9 +55,7 @@
       "indexes": {
         "chats_user_id_idx": {
           "name": "chats_user_id_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -108,9 +106,7 @@
       "indexes": {
         "messages_chat_id_idx": {
           "name": "messages_chat_id_idx",
-          "columns": [
-            "chat_id"
-          ],
+          "columns": ["chat_id"],
           "isUnique": false
         }
       },
@@ -119,12 +115,8 @@
           "name": "messages_chat_id_chats_id_fk",
           "tableFrom": "messages",
           "tableTo": "chats",
-          "columnsFrom": [
-            "chat_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chat_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

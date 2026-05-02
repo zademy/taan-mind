@@ -4,7 +4,7 @@
  * Uploads a document to Paperless.
  * Accepts multipart form data and forwards to POST /documents/post_document/.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const formData = await readMultipartFormData(event)
 
   if (!formData || formData.length === 0) {
@@ -39,7 +39,9 @@ export default defineEventHandler(async (event) => {
     if (!part.name) continue
 
     if (part.filename) {
-      const blob = new Blob([new Uint8Array(part.data)], { type: part.type || 'application/octet-stream' })
+      const blob = new Blob([new Uint8Array(part.data)], {
+        type: part.type || 'application/octet-stream'
+      })
       body.append(part.name, blob, part.filename)
     } else {
       body.append(part.name, part.data.toString('utf-8'))
@@ -57,7 +59,7 @@ export default defineEventHandler(async (event) => {
 
     return result
   } catch (error: unknown) {
-    const err = error as { statusCode?: number, statusMessage?: string }
+    const err = error as { statusCode?: number; statusMessage?: string }
     throw createError({
       statusCode: err?.statusCode || 502,
       statusMessage: err?.statusMessage || 'Failed to upload document to Paperless'

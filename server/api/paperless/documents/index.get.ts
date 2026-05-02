@@ -6,7 +6,7 @@ import type { PaperlessDocument, PaperlessPaginatedResponse } from '~~/shared/ty
  * Lists documents with pagination and filters.
  * Forwards query params to Paperless GET /documents/.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const query = getQuery(event)
 
   const client = usePaperlessClient(event)
@@ -27,9 +27,11 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    return await client<PaperlessPaginatedResponse<PaperlessDocument>>('/documents/', { query: params })
+    return await client<PaperlessPaginatedResponse<PaperlessDocument>>('/documents/', {
+      query: params
+    })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number, statusMessage?: string }
+    const err = error as { statusCode?: number; statusMessage?: string }
     throw createError({
       statusCode: err?.statusCode || 502,
       statusMessage: err?.statusMessage || 'Failed to fetch documents from Paperless'

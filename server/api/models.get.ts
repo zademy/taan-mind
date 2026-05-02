@@ -13,10 +13,7 @@ export default defineEventHandler(async (event): Promise<ModelsResponse> => {
   const ollamaModels = await getAvailableOllamaModelOptions(event)
 
   return {
-    models: [
-      ...MODELS,
-      ...ollamaModels
-    ]
+    models: [...MODELS, ...ollamaModels]
   }
 })
 

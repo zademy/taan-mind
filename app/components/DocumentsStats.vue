@@ -8,12 +8,7 @@ const chartsExpanded = ref(false)
 /** Keeps chart dependencies out of the initial documents page render. */
 const shouldLoadCharts = ref(false)
 
-const chartSkeletonCards = [
-  'By Status',
-  'By Month',
-  'By MIME Type',
-  'By Document Type'
-]
+const chartSkeletonCards = ['By Status', 'By Month', 'By MIME Type', 'By Document Type']
 
 let observer: IntersectionObserver | null = null
 
@@ -40,7 +35,7 @@ function observeCharts(element: HTMLElement) {
   }
 
   observer = new IntersectionObserver(
-    (entries) => {
+    entries => {
       if (entries.some(entry => entry.isIntersecting)) {
         loadCharts()
       }
@@ -77,9 +72,7 @@ onBeforeUnmount(stopObservingCharts)
   </div>
 
   <!-- No data -->
-  <div v-else-if="!data" class="text-center text-sm text-muted py-8">
-    No data available
-  </div>
+  <div v-else-if="!data" class="text-center text-sm text-muted py-8">No data available</div>
 
   <!-- Stats content. The total card is lightweight; chart dependencies load lazily. -->
   <div v-else class="space-y-4 mb-6">
@@ -90,9 +83,7 @@ onBeforeUnmount(stopObservingCharts)
           <p class="text-4xl font-bold text-highlighted">
             {{ data.total || 0 }}
           </p>
-          <p class="text-sm text-muted mt-1">
-            Total Documents
-          </p>
+          <p class="text-sm text-muted mt-1">Total Documents</p>
         </div>
 
         <UButton
@@ -100,9 +91,7 @@ onBeforeUnmount(stopObservingCharts)
           variant="soft"
           size="sm"
           :label="chartsExpanded ? 'Hide breakdowns' : 'Show breakdowns'"
-          :trailing-icon="
-            chartsExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'
-          "
+          :trailing-icon="chartsExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
           :aria-expanded="chartsExpanded"
           aria-controls="document-stats-breakdowns"
           class="self-center sm:self-auto"
@@ -130,9 +119,7 @@ onBeforeUnmount(stopObservingCharts)
             <h3 class="text-sm font-semibold text-highlighted mb-3">
               {{ card }}
             </h3>
-            <div
-              class="h-48 rounded-lg bg-muted/40 animate-pulse flex items-center justify-center"
-            >
+            <div class="h-48 rounded-lg bg-muted/40 animate-pulse flex items-center justify-center">
               <span class="text-sm text-muted">Loading charts...</span>
             </div>
           </div>
@@ -141,9 +128,7 @@ onBeforeUnmount(stopObservingCharts)
 
       <template #fallback>
         <div class="rounded-xl bg-elevated ring-1 ring-default/50 p-6 text-center">
-          <p class="text-sm text-muted">
-            Loading charts...
-          </p>
+          <p class="text-sm text-muted">Loading charts...</p>
         </div>
       </template>
     </ClientOnly>

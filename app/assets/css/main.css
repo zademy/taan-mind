@@ -5,8 +5,8 @@
    - Nuxt UI component library
    ========================================================================== */
 
-@import "tailwindcss" theme(static);
-@import "@nuxt/ui";
+@import 'tailwindcss' theme(static);
+@import '@nuxt/ui';
 
 /* ==========================================================================
    Static Theme Configuration
@@ -16,12 +16,12 @@
    ========================================================================== */
 
 @theme static {
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 .font-cinzel {
-  font-family: "Cinzel", serif;
+  font-family: 'Cinzel', serif;
   font-weight: 700;
   letter-spacing: 0.15em;
 }
