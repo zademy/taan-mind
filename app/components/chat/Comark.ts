@@ -11,9 +11,7 @@ import _SourceLink from './SourceLink.vue'
 
 export default defineComarkComponent({
   name: 'ChatComark',
-  plugins: [
-    highlight()
-  ],
+  plugins: [highlight()],
   // Custom component mappings used within rendered markdown content
   components: {
     'source-link': _SourceLink

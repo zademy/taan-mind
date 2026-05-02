@@ -10,7 +10,7 @@ import type { PaperlessDocument, PaperlessPaginatedResponse } from '~~/shared/ty
  * - Preserves the `processed` flag on existing rows.
  * - Interval is configurable via NUXT_SYNC_INTERVAL_MS (default 5000ms).
  */
-export default defineNitroPlugin((nitroApp) => {
+export default defineNitroPlugin(nitroApp => {
   let syncInterval: ReturnType<typeof setInterval> | null = null
   let isSyncing = false
 
@@ -23,7 +23,9 @@ export default defineNitroPlugin((nitroApp) => {
     const baseUrl = config.paperlessBaseUrl?.replace(/\/+$/, '')
     const token = config.paperlessApiToken
     if (!baseUrl || !token) {
-      consola.warn('[Paperless Sync] Not configured (NUXT_PAPERLESS_BASE_URL or NUXT_PAPERLESS_API_TOKEN is missing)')
+      consola.warn(
+        '[Paperless Sync] Not configured (NUXT_PAPERLESS_BASE_URL or NUXT_PAPERLESS_API_TOKEN is missing)'
+      )
       return
     }
 
@@ -40,18 +42,22 @@ export default defineNitroPlugin((nitroApp) => {
         let hasMore = true
 
         while (hasMore) {
-          const response = await $fetch<PaperlessPaginatedResponse<PaperlessDocument>>(`${baseUrl}/api/documents/`, {
-            headers: {
-              Authorization: `Token ${token}`,
-              Accept: 'application/json; version=5'
-            },
-            query: { page, page_size: 100 }
-          })
+          const response = await $fetch<PaperlessPaginatedResponse<PaperlessDocument>>(
+            `${baseUrl}/api/documents/`,
+            {
+              headers: {
+                Authorization: `Token ${token}`,
+                Accept: 'application/json; version=5'
+              },
+              query: { page, page_size: 100 }
+            }
+          )
 
           const docs = response.results || []
 
           for (const doc of docs) {
-            await db.insert(schema.paperlessDocuments)
+            await db
+              .insert(schema.paperlessDocuments)
               .values({
                 id: doc.id,
                 title: doc.title,

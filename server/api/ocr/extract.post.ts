@@ -1,10 +1,5 @@
 /** Set of MIME types that can be directly OCR'd as images (PDF, PNG, JPEG, WebP). */
-const OCR_IMAGE_TYPES = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/webp'
-])
+const OCR_IMAGE_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp'])
 
 /** Combined set of all MIME types supported for OCR/extraction processing. */
 const SUPPORTED_TYPES = new Set([
@@ -24,7 +19,7 @@ const SUPPORTED_TYPES = new Set([
  *
  * @returns The extracted text grouped by pages along with the method used.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const formData = await readMultipartFormData(event)
   if (!formData || formData.length === 0) {
     throw createError({ statusCode: 400, statusMessage: 'No file uploaded' })

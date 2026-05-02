@@ -52,13 +52,8 @@ const emit = defineEmits<{
       />
       <!-- Web search tool (Google Search or generic web search) -->
       <UChatTool
-        v-else-if="
-          getToolName(part) === 'web_search'
-            || getToolName(part) === 'google_search'
-        "
-        :text="
-          isToolStreaming(part) ? 'Searching the web...' : 'Searched the web'
-        "
+        v-else-if="getToolName(part) === 'web_search' || getToolName(part) === 'google_search'"
+        :text="isToolStreaming(part) ? 'Searching the web...' : 'Searched the web'"
         :suffix="getSearchQuery(part)"
         :streaming="isToolStreaming(part)"
         chevron="leading"

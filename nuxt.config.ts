@@ -79,15 +79,6 @@ export default defineNuxtConfig({
     methodsToProtect: ['POST', 'PUT', 'PATCH', 'DELETE']
   },
 
-  eslint: {
-    config: {
-      stylistic: {
-        commaDangle: 'never',
-        braceStyle: '1tbs'
-      }
-    }
-  },
-
   icon: {
     serverBundle: {
       collections: ['lucide']

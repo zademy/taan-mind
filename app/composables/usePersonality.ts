@@ -1,5 +1,10 @@
 import type { PersonalityId } from '#shared/utils/personalities'
-import { DEFAULT_PERSONALITY, PERSONALITIES, isSupportedPersonality } from '#shared/utils/personalities'
+import {
+  DEFAULT_PERSONALITY,
+  PERSONALITIES,
+  isSupportedPersonality,
+  toCustomPersonalityValue
+} from '#shared/utils/personalities'
 
 /**
  * Composable that manages the selected AI personality.
@@ -11,15 +16,43 @@ import { DEFAULT_PERSONALITY, PERSONALITIES, isSupportedPersonality } from '#sha
  */
 export function usePersonality() {
   /** Currently selected personality, persisted as a cookie. */
-  const personality = useCookie<PersonalityId>('personality', { default: () => DEFAULT_PERSONALITY })
+  const personality = useCookie<PersonalityId>('personality', {
+    default: () => DEFAULT_PERSONALITY
+  })
+  const { customPersonalities, status, refresh } = useCustomPersonalities()
 
-  // Reset to default if the stored personality is no longer in the supported list
+  // Reset malformed cookie values immediately. Custom IDs are verified after fetch completes.
   if (!isSupportedPersonality(personality.value as string)) {
     personality.value = DEFAULT_PERSONALITY
   }
 
+  const customPersonalityOptions = computed(() =>
+    (customPersonalities.value ?? []).map(customPersonality => ({
+      label: customPersonality.label,
+      value: toCustomPersonalityValue(customPersonality.id),
+      icon: 'i-lucide-sparkles',
+      description: 'Custom markdown personality',
+      custom: true
+    }))
+  )
+
+  const personalities = computed(() => [...PERSONALITIES, ...customPersonalityOptions.value])
+
+  watch(
+    [personalities, status],
+    () => {
+      if (status.value === 'pending') return
+      if (!personalities.value.some(option => option.value === personality.value)) {
+        personality.value = DEFAULT_PERSONALITY
+      }
+    },
+    { immediate: true }
+  )
+
   return {
-    personalities: PERSONALITIES,
+    personalities,
+    customPersonalities,
+    refreshCustomPersonalities: refresh,
     personality
   }
 }

@@ -3,7 +3,7 @@
  *
  * Search autocomplete. Forwards term and limit to GET /search/autocomplete/.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const query = getQuery(event)
 
   const client = usePaperlessClient(event)
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   try {
     return await client<string[]>('/search/autocomplete/' as string, { query: params })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number, statusMessage?: string }
+    const err = error as { statusCode?: number; statusMessage?: string }
     throw createError({
       statusCode: err?.statusCode || 502,
       statusMessage: err?.statusMessage || 'Failed to search in Paperless'

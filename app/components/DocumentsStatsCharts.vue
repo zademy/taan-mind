@@ -31,33 +31,27 @@ const props = defineProps<{
 
 /** DonutChart: map byStatus to data array + categories record */
 const donutData = computed(() => props.data.byStatus.map(s => s.value))
-const donutCategories = computed<Record<string, BulletLegendItemInterface>>(
-  () => {
-    const colorMap: Record<string, string> = {
-      Pending: '#f59e0b',
-      Processing: '#3b82f6',
-      Processed: '#10b981'
-    }
-    const result: Record<string, BulletLegendItemInterface> = {}
-    props.data.byStatus.forEach((s, i) => {
-      result[String(i)] = {
-        name: s.label,
-        color: colorMap[s.label] ?? '#6b7280'
-      }
-    })
-    return result
+const donutCategories = computed<Record<string, BulletLegendItemInterface>>(() => {
+  const colorMap: Record<string, string> = {
+    Pending: '#f59e0b',
+    Processing: '#3b82f6',
+    Processed: '#10b981'
   }
-)
+  const result: Record<string, BulletLegendItemInterface> = {}
+  props.data.byStatus.forEach((s, i) => {
+    result[String(i)] = {
+      name: s.label,
+      color: colorMap[s.label] ?? '#6b7280'
+    }
+  })
+  return result
+})
 
 /** AreaChart: map byMonth to array of objects with month + count keys */
-const areaData = computed(() =>
-  props.data.byMonth.map(s => ({ month: s.label, count: s.value }))
-)
-const areaCategories = computed<Record<string, BulletLegendItemInterface>>(
-  () => ({
-    count: { name: 'Documents', color: 'var(--ui-primary)' }
-  })
-)
+const areaData = computed(() => props.data.byMonth.map(s => ({ month: s.label, count: s.value })))
+const areaCategories = computed<Record<string, BulletLegendItemInterface>>(() => ({
+  count: { name: 'Documents', color: 'var(--ui-primary)' }
+}))
 const areaXFormatter = (tick: number): string => {
   return areaData.value[tick]?.month ?? ''
 }
@@ -66,11 +60,9 @@ const areaXFormatter = (tick: number): string => {
 const mimeData = computed(() =>
   props.data.byMimeType.map(s => ({ label: s.label, count: s.value }))
 )
-const mimeCategories = computed<Record<string, BulletLegendItemInterface>>(
-  () => ({
-    count: { name: 'Count', color: 'var(--ui-text-muted)' }
-  })
-)
+const mimeCategories = computed<Record<string, BulletLegendItemInterface>>(() => ({
+  count: { name: 'Count', color: 'var(--ui-text-muted)' }
+}))
 const mimeXFormatter = (tick: number): string => {
   return mimeData.value[tick]?.label ?? ''
 }
@@ -82,11 +74,9 @@ const docTypeData = computed(() =>
     count: s.value
   }))
 )
-const docTypeCategories = computed<Record<string, BulletLegendItemInterface>>(
-  () => ({
-    count: { name: 'Count', color: '#8b5cf6' }
-  })
-)
+const docTypeCategories = computed<Record<string, BulletLegendItemInterface>>(() => ({
+  count: { name: 'Count', color: '#8b5cf6' }
+}))
 const docTypeXFormatter = (tick: number): string => {
   return docTypeData.value[tick]?.label ?? ''
 }
@@ -97,9 +87,7 @@ const docTypeXFormatter = (tick: number): string => {
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <!-- DonutChart: Status -->
     <div class="rounded-xl bg-elevated ring-1 ring-default/50 p-4">
-      <h3 class="text-sm font-semibold text-highlighted mb-3">
-        By Status
-      </h3>
+      <h3 class="text-sm font-semibold text-highlighted mb-3">By Status</h3>
       <div class="h-56 w-full flex items-center justify-center">
         <DonutChart
           v-if="donutData.length"
@@ -115,9 +103,7 @@ const docTypeXFormatter = (tick: number): string => {
 
     <!-- AreaChart: Timeline -->
     <div class="rounded-xl bg-elevated ring-1 ring-default/50 p-4">
-      <h3 class="text-sm font-semibold text-highlighted mb-3">
-        By Month
-      </h3>
+      <h3 class="text-sm font-semibold text-highlighted mb-3">By Month</h3>
       <div class="h-48">
         <AreaChart
           v-if="areaData.length"
@@ -137,9 +123,7 @@ const docTypeXFormatter = (tick: number): string => {
 
     <!-- BarChart: MIME types -->
     <div class="rounded-xl bg-elevated ring-1 ring-default/50 p-4">
-      <h3 class="text-sm font-semibold text-highlighted mb-3">
-        By MIME Type
-      </h3>
+      <h3 class="text-sm font-semibold text-highlighted mb-3">By MIME Type</h3>
       <div class="h-48">
         <BarChart
           v-if="mimeData.length"
@@ -161,9 +145,7 @@ const docTypeXFormatter = (tick: number): string => {
 
     <!-- BarChart: Document types -->
     <div class="rounded-xl bg-elevated ring-1 ring-default/50 p-4">
-      <h3 class="text-sm font-semibold text-highlighted mb-3">
-        By Document Type
-      </h3>
+      <h3 class="text-sm font-semibold text-highlighted mb-3">By Document Type</h3>
       <div class="h-48">
         <BarChart
           v-if="docTypeData.length"

@@ -8,13 +8,11 @@
 const colorMode = useColorMode()
 
 /** Computes the theme-color meta tag value based on the current color mode */
-const color = computed(() =>
-  colorMode.value === 'dark' ? '#1b1718' : 'white'
-)
+const color = computed(() => (colorMode.value === 'dark' ? '#1b1718' : 'white'))
 
 /** Google Fonts stylesheet loaded from head instead of CSS @import */
-const fontStylesheetUrl
-  = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap'
+const fontStylesheetUrl =
+  'https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap'
 
 /** Configures the HTML head with meta tags, favicon, and language attribute */
 useHead({

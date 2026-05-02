@@ -85,7 +85,7 @@ services:
         condition: service_completed_successfully
 
     ports:
-      - "3000:3000"
+      - '3000:3000'
 
     # Persist the SQLite database and any local app data across restarts.
     volumes:
@@ -94,7 +94,7 @@ services:
     # Ensure host.docker.internal resolves to the host machine's IP so the
     # container can reach services like Ollama running on the host.
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
 
     # Use an init process (PID 1) to properly handle signals (SIGTERM) and
     # reap zombie processes inside the container.
@@ -125,9 +125,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "fetch('http://127.0.0.1:' + (process.env.PORT || '3000') + '/api/health').then((r) => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
         ]
       interval: 30s
@@ -148,16 +148,16 @@ services:
     image: docker.io/library/redis:8.6.2
     restart: unless-stopped
     labels:
-      com.paperlessia.project: "paperless-ia"
-      com.paperlessia.service: "broker"
-      com.paperlessia.role: "redis-cache-queue"
+      com.paperlessia.project: 'paperless-ia'
+      com.paperlessia.service: 'broker'
+      com.paperlessia.role: 'redis-cache-queue'
     # Persistence: save to disk every 60 seconds if at least 1 key changed.
     # Log level: warning to reduce noise in container logs.
-    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
     volumes:
       - paperlessia_redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -171,9 +171,9 @@ services:
     image: docker.io/library/postgres:18.3
     restart: unless-stopped
     labels:
-      com.paperlessia.project: "paperless-ia"
-      com.paperlessia.service: "db"
-      com.paperlessia.role: "postgres-database"
+      com.paperlessia.project: 'paperless-ia'
+      com.paperlessia.service: 'db'
+      com.paperlessia.role: 'postgres-database'
     environment:
       POSTGRES_DB: paperless
       POSTGRES_USER: paperless
@@ -188,7 +188,7 @@ services:
     healthcheck:
       # Use pg_isready to check if PostgreSQL is accepting connections.
       # $$ escaping is required by docker-compose for literal $ in shell.
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -202,9 +202,9 @@ services:
     image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
     restart: unless-stopped
     labels:
-      com.paperlessia.project: "paperless-ia"
-      com.paperlessia.service: "webserver"
-      com.paperlessia.role: "paperless-ngx"
+      com.paperlessia.project: 'paperless-ia'
+      com.paperlessia.service: 'webserver'
+      com.paperlessia.role: 'paperless-ngx'
     depends_on:
       # Wait for Redis and PostgreSQL to be healthy before starting.
       broker:
@@ -217,7 +217,7 @@ services:
       tika:
         condition: service_started
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       # ── General settings ─────────────────────────────────────────────────
       PAPERLESS_URL: http://localhost:8000
@@ -254,9 +254,9 @@ services:
       # Probe the root endpoint to verify the Django server is responding.
       test:
         [
-          "CMD",
-          "python3",
-          "-c",
+          'CMD',
+          'python3',
+          '-c',
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5).read()"
         ]
       interval: 30s
@@ -282,7 +282,7 @@ services:
   # Default credentials: paperless / paperless (change for production!).
   paperless-bootstrap:
     image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
-    restart: "no"
+    restart: 'no'
     env_file:
       - .env
     environment:
@@ -305,7 +305,7 @@ services:
         condition: service_healthy
     # Override the default entrypoint to run a Django management shell script
     # that creates the API user and token.
-    entrypoint: ["/bin/bash", "-c"]
+    entrypoint: ['/bin/bash', '-c']
     command:
       - |
         python manage.py shell <<'PYTHON'
@@ -339,18 +339,18 @@ services:
     image: docker.io/gotenberg/gotenberg:8.31.0
     restart: unless-stopped
     labels:
-      com.paperlessia.project: "paperless-ia"
-      com.paperlessia.service: "gotenberg"
-      com.paperlessia.role: "document-conversion"
+      com.paperlessia.project: 'paperless-ia'
+      com.paperlessia.service: 'gotenberg'
+      com.paperlessia.role: 'document-conversion'
     command:
-      - "gotenberg"
+      - 'gotenberg'
       # Security: disable JavaScript execution in Chromium (mitigates XSS
       # attacks during HTML-to-PDF conversion).
-      - "--chromium-disable-javascript=true"
+      - '--chromium-disable-javascript=true'
       # Restrict Chromium file access to the /tmp directory only.
-      - "--chromium-allow-list=file:///tmp/.*"
+      - '--chromium-allow-list=file:///tmp/.*'
       # Increase API timeout for large or complex document conversions.
-      - "--api-timeout=60s"
+      - '--api-timeout=60s'
     networks:
       - paperless_backend
 
@@ -362,9 +362,9 @@ services:
     image: docker.io/apache/tika:3.3.0.0
     restart: unless-stopped
     labels:
-      com.paperlessia.project: "paperless-ia"
-      com.paperlessia.service: "tika"
-      com.paperlessia.role: "document-text-extraction"
+      com.paperlessia.project: 'paperless-ia'
+      com.paperlessia.service: 'tika'
+      com.paperlessia.role: 'document-text-extraction'
     networks:
       - paperless_backend
 

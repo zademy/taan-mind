@@ -29,12 +29,7 @@ const emit = defineEmits<{ close: [boolean] }>()
       <!-- Confirm deletion button -->
       <UButton label="Delete" @click="emit('close', true)" />
       <!-- Cancel button – closes the modal without confirming -->
-      <UButton
-        color="neutral"
-        variant="ghost"
-        label="Cancel"
-        @click="emit('close', false)"
-      />
+      <UButton color="neutral" variant="ghost" label="Cancel" @click="emit('close', false)" />
     </template>
   </UModal>
 </template>

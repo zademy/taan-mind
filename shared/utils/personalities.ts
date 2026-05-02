@@ -1,5 +1,17 @@
+/** Static personality identifiers bundled with the application. */
+export type DefaultPersonalityId = 'friendly' | 'professional' | 'enthusiastic'
+
+/** Persisted custom personality identifier used in chat records. */
+export type CustomPersonalityId = `custom:${string}`
+
 /** Union of all supported personality identifiers. */
-export type PersonalityId = 'friendly' | 'professional' | 'enthusiastic'
+export type PersonalityId = DefaultPersonalityId | CustomPersonalityId
+
+/** Maximum custom personalities an anonymous user can create. */
+export const MAX_CUSTOM_PERSONALITIES = 3
+
+/** Maximum markdown prompt length for a custom personality. */
+export const MAX_CUSTOM_PERSONALITY_PROMPT_LENGTH = 1200
 
 /** Represents a selectable personality option in the UI. */
 export interface PersonalityOption {
@@ -12,11 +24,30 @@ export interface PersonalityOption {
   /** Short description shown in the UI. */
   description: string
   /** System prompt injected into the AI context to set the personality. */
-  systemPrompt: string
+  systemPrompt?: string
+  /** Whether this option comes from user settings instead of defaults. */
+  custom?: boolean
 }
 
-/** All available AI personalities selectable by the user. */
-export const PERSONALITIES: PersonalityOption[] = [
+/** A persisted custom personality owned by the current anonymous user. */
+export interface CustomPersonality {
+  /** Database UUID. */
+  id: string
+  /** Human-readable display name in the selector. */
+  label: string
+  /** Markdown-formatted system prompt. */
+  prompt: string
+  /** ISO timestamp from the server. */
+  createdAt: string
+  /** ISO timestamp from the server. */
+  updatedAt: string
+}
+
+/** Static AI personalities selectable by every user. */
+export const PERSONALITIES: (PersonalityOption & {
+  value: DefaultPersonalityId
+  systemPrompt: string
+})[] = [
   {
     label: 'Friendly',
     value: 'friendly',
@@ -65,21 +96,61 @@ export const PERSONALITIES: PersonalityOption[] = [
 export const DEFAULT_PERSONALITY = PERSONALITIES[0]!.value
 
 /**
- * Type guard that checks whether a string is a valid supported personality ID.
+ * Builds the stored selector value for a custom personality.
+ *
+ * @param id - Database UUID of the custom personality.
+ * @returns A namespaced custom personality value.
+ */
+export function toCustomPersonalityValue(id: string): CustomPersonalityId {
+  return `custom:${id}`
+}
+
+/**
+ * Type guard that checks whether a string references a custom personality.
  *
  * @param value - The string to check.
- * @returns `true` if the value matches a supported personality ID.
+ * @returns `true` when the value uses the custom personality namespace.
  */
-export function isSupportedPersonality(value: string): value is PersonalityId {
+export function isCustomPersonalityId(value: string): value is CustomPersonalityId {
+  return value.startsWith('custom:') && value.length > 'custom:'.length
+}
+
+/**
+ * Extracts the database UUID from a custom personality selector value.
+ *
+ * @param value - The custom personality selector value.
+ * @returns The database UUID without the namespace.
+ */
+export function getCustomPersonalityId(value: CustomPersonalityId): string {
+  return value.slice('custom:'.length)
+}
+
+/**
+ * Type guard that checks whether a string is a static bundled personality ID.
+ *
+ * @param value - The string to check.
+ * @returns `true` if the value matches a bundled personality ID.
+ */
+export function isDefaultPersonality(value: string): value is DefaultPersonalityId {
   return PERSONALITIES.some(p => p.value === value)
 }
 
 /**
- * Retrieves the system prompt for a given personality.
+ * Type guard that checks whether a string has a supported personality format.
+ *
+ * @param value - The string to check.
+ * @returns `true` if the value is bundled or namespaced as custom.
+ */
+export function isSupportedPersonality(value: string): value is PersonalityId {
+  return isDefaultPersonality(value) || isCustomPersonalityId(value)
+}
+
+/**
+ * Retrieves the system prompt for a bundled personality.
  *
  * @param id - The personality identifier.
  * @returns The system prompt string, falling back to the default personality's prompt.
  */
-export function getPersonalityPrompt(id: PersonalityId): string {
+export function getPersonalityPrompt(id: DefaultPersonalityId | string): string {
   return PERSONALITIES.find(p => p.value === id)?.systemPrompt ?? PERSONALITIES[0]!.systemPrompt
 }

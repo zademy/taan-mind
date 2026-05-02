@@ -1,5 +1,13 @@
 import type { UIMessage } from 'ai'
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, smoothStream, stepCountIs, streamText } from 'ai'
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  generateText,
+  smoothStream,
+  stepCountIs,
+  streamText
+} from 'ai'
 import { db, schema } from 'hub:db'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -24,28 +32,31 @@ defineRouteMeta({
  *
  * Supports tool calls (chart, weather) with up to 5 reasoning steps.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const userId = getChatUserId(event)
 
-  const { id } = await getValidatedRouterParams(event, z.object({
-    id: z.string()
-  }).parse)
+  const { id } = await getValidatedRouterParams(
+    event,
+    z.object({
+      id: z.string()
+    }).parse
+  )
 
-  const { model, messages } = await readValidatedBody(event, z.object({
-    model: z.string().refine(isSupportedModel, {
-      message: 'Invalid model'
-    }),
-    messages: z.array(z.custom<UIMessage>())
-  }).parse)
+  const { model, messages } = await readValidatedBody(
+    event,
+    z.object({
+      model: z.string().refine(isSupportedModel, {
+        message: 'Invalid model'
+      }),
+      messages: z.array(z.custom<UIMessage>())
+    }).parse
+  )
 
   await assertLanguageModelAvailable(model, event)
 
   // Verify the chat exists and belongs to the requesting user
   const chat = await db.query.chats.findFirst({
-    where: () => and(
-      eq(schema.chats.id, id as string),
-      eq(schema.chats.userId, userId)
-    ),
+    where: () => and(eq(schema.chats.id, id as string), eq(schema.chats.userId, userId)),
     with: {
       messages: true
     }
@@ -55,7 +66,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Retrieve the personality system prompt for this chat
-  const personalityPrompt = getPersonalityPrompt(chat.personality as PersonalityId)
+  const personalityPrompt = await resolvePersonalityPrompt(chat.personality, userId)
 
   let documentContext = ''
   const chatDocumentId = (chat as unknown as { documentId: number | null }).documentId
@@ -89,18 +100,24 @@ ${doc.aiContent || doc.ocrContent || 'No content available'}
       prompt: JSON.stringify(messages[0])
     })
 
-    await db.update(schema.chats).set({ title }).where(eq(schema.chats.id, id as string))
+    await db
+      .update(schema.chats)
+      .set({ title })
+      .where(eq(schema.chats.id, id as string))
   }
 
   // Persist the latest user message (upsert in case of edit/regenerate)
   const lastMessage = messages[messages.length - 1]
   if (lastMessage?.role === 'user' && messages.length > 1) {
-    await db.insert(schema.messages).values({
-      id: lastMessage.id,
-      chatId: id as string,
-      role: 'user',
-      parts: lastMessage.parts
-    }).onConflictDoUpdate({ target: schema.messages.id, set: { parts: lastMessage.parts } })
+    await db
+      .insert(schema.messages)
+      .values({
+        id: lastMessage.id,
+        chatId: id as string,
+        role: 'user',
+        parts: lastMessage.parts
+      })
+      .onConflictDoUpdate({ target: schema.messages.id, set: { parts: lastMessage.parts } })
   }
 
   // Set up abort handling so the stream stops if the client disconnects
@@ -153,19 +170,26 @@ ${doc.aiContent || doc.ocrContent || 'No content available'}
       }
 
       // Merge the AI stream into the UI message stream, including sources and reasoning
-      writer.merge(result.toUIMessageStream({
-        sendSources: true,
-        sendReasoning: true
-      }))
+      writer.merge(
+        result.toUIMessageStream({
+          sendSources: true,
+          sendReasoning: true
+        })
+      )
     },
     // Persist all assistant messages (including tool results) after the stream finishes
     onFinish: async ({ messages }) => {
-      await db.insert(schema.messages).values(messages.map(message => ({
-        id: message.id,
-        chatId: chat.id,
-        role: message.role as 'user' | 'assistant',
-        parts: message.parts
-      }))).onConflictDoNothing()
+      await db
+        .insert(schema.messages)
+        .values(
+          messages.map(message => ({
+            id: message.id,
+            chatId: chat.id,
+            role: message.role as 'user' | 'assistant',
+            parts: message.parts
+          }))
+        )
+        .onConflictDoNothing()
     }
   })
 

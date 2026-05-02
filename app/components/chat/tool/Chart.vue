@@ -12,25 +12,31 @@ const props = defineProps<{
 
 /** Computed background and text color classes based on invocation state */
 const color = computed(() => {
-  return ({
-    'output-error': 'bg-muted text-error'
-  })[props.invocation.state as string] || 'bg-muted text-white'
+  return (
+    {
+      'output-error': 'bg-muted text-error'
+    }[props.invocation.state as string] || 'bg-muted text-white'
+  )
 })
 
 /** Computed icon based on the current invocation state */
 const icon = computed(() => {
-  return ({
-    'input-available': 'i-lucide-line-chart',
-    'output-error': 'i-lucide-triangle-alert'
-  })[props.invocation.state as string] || 'i-lucide-loader-circle'
+  return (
+    {
+      'input-available': 'i-lucide-line-chart',
+      'output-error': 'i-lucide-triangle-alert'
+    }[props.invocation.state as string] || 'i-lucide-loader-circle'
+  )
 })
 
 /** Computed status message based on the current invocation state */
 const message = computed(() => {
-  return ({
-    'input-available': 'Generating chart...',
-    'output-error': 'Can\'t generate chart, please try again'
-  })[props.invocation.state as string] || 'Loading chart data...'
+  return (
+    {
+      'input-available': 'Generating chart...',
+      'output-error': "Can't generate chart, please try again"
+    }[props.invocation.state as string] || 'Loading chart data...'
+  )
 })
 
 /**
@@ -48,15 +54,23 @@ const xFormatter = (invocation: ChartUIToolInvocation) => {
  * Builds a categories map from the chart series configuration,
  * mapping each series key to its display name and color.
  */
-const categories = (invocation: ChartUIToolInvocation): Record<string, BulletLegendItemInterface> => {
+const categories = (
+  invocation: ChartUIToolInvocation
+): Record<string, BulletLegendItemInterface> => {
   if (!invocation.output?.series) return {}
-  return invocation.output.series.reduce((acc: Record<string, BulletLegendItemInterface>, serie: { key: string, name: string, color: string }) => {
-    acc[serie.key] = {
-      name: serie.name,
-      color: serie.color
-    }
-    return acc
-  }, {} as Record<string, BulletLegendItemInterface>)
+  return invocation.output.series.reduce(
+    (
+      acc: Record<string, BulletLegendItemInterface>,
+      serie: { key: string; name: string; color: string }
+    ) => {
+      acc[serie.key] = {
+        name: serie.name,
+        color: serie.color
+      }
+      return acc
+    },
+    {} as Record<string, BulletLegendItemInterface>
+  )
 }
 
 /**
@@ -112,9 +126,14 @@ const formatValue = (value: string | number | undefined): string => {
       >
         <!-- Custom tooltip template showing all series values -->
         <template #tooltip="{ values }">
-          <div class="bg-muted/50 rounded-sm px-2 py-1 shadow-lg backdrop-blur-sm max-w-xs ring ring-offset-2 ring-offset-bg ring-default border border-default">
+          <div
+            class="bg-muted/50 rounded-sm px-2 py-1 shadow-lg backdrop-blur-sm max-w-xs ring ring-offset-2 ring-offset-bg ring-default border border-default"
+          >
             <!-- X-axis value label -->
-            <div v-if="values && values[invocation.output.xKey]" class="text-sm font-semibold text-highlighted mb-2">
+            <div
+              v-if="values && values[invocation.output.xKey]"
+              class="text-sm font-semibold text-highlighted mb-2"
+            >
               {{ values[invocation.output.xKey] }}
             </div>
             <!-- Series values list -->

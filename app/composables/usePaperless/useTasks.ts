@@ -8,9 +8,7 @@ import type { PaperlessPaginatedResponse, PaperlessTask } from '~~/shared/types/
  * @returns A `useLazyFetch` result with the paginated task list.
  */
 export function usePaperlessTasks() {
-  return useLazyFetch<PaperlessPaginatedResponse<PaperlessTask>>(
-    '/api/paperless/tasks'
-  )
+  return useLazyFetch<PaperlessPaginatedResponse<PaperlessTask>>('/api/paperless/tasks')
 }
 
 /**

@@ -235,12 +235,12 @@ paperless-ui-chat/
 
 ## AI Models
 
-| Provider | Model ID               | Display Name |
-| -------- | ---------------------- | ------------ |
-| MiniMax  | `minimax/MiniMax-M2.7` | MiniMax M2.7 |
-| GLM      | `glm/glm-5`            | GLM 5        |
-| GLM      | `glm/glm-5.1`          | GLM 5.1      |
-| GLM      | `glm/glm-5-turbo`      | GLM 5 Turbo  |
+| Provider | Model ID               | Display Name                                         |
+| -------- | ---------------------- | ---------------------------------------------------- |
+| MiniMax  | `minimax/MiniMax-M2.7` | MiniMax M2.7                                         |
+| GLM      | `glm/glm-5`            | GLM 5                                                |
+| GLM      | `glm/glm-5.1`          | GLM 5.1                                              |
+| GLM      | `glm/glm-5-turbo`      | GLM 5 Turbo                                          |
 | Ollama   | `ollama/<model-name>`  | Discovered from `/api/tags` when Ollama is reachable |
 
 > [!NOTE]

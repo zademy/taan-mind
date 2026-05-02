@@ -1,12 +1,7 @@
 import { z } from 'zod'
 import { CONVERTIBLE_IMAGE_TYPES, TEXT_EXTRACTABLE_TYPES } from '~~/server/utils/ocr'
 
-const OCR_IMAGE_TYPES = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/webp'
-])
+const OCR_IMAGE_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp'])
 
 const SUPPORTED_TYPES = new Set([
   ...OCR_IMAGE_TYPES,
@@ -19,10 +14,13 @@ const SUPPORTED_TYPES = new Set([
  *
  * Downloads a document from Paperless and processes it with OCR (Ollama GLM-OCR).
  */
-export default defineEventHandler(async (event) => {
-  const { id } = await getValidatedRouterParams(event, z.object({
-    id: z.coerce.number().int().positive()
-  }).parse)
+export default defineEventHandler(async event => {
+  const { id } = await getValidatedRouterParams(
+    event,
+    z.object({
+      id: z.coerce.number().int().positive()
+    }).parse
+  )
 
   const config = useRuntimeConfig(event)
   const baseURL = config.paperlessBaseUrl?.replace(/\/+$/, '')
@@ -43,22 +41,27 @@ export default defineEventHandler(async (event) => {
   }
 
   // Download binary from Paperless
-  const response = await $fetch.raw(`${baseURL}/api/documents/${id}/download/` as string, {
-    headers: {
-      Authorization: `Token ${token}`
-    },
-    responseType: 'arrayBuffer'
-  }).catch((error: unknown) => {
-    const err = error as { statusCode?: number }
-    throw createError({
-      statusCode: err?.statusCode === 404 ? 404 : (err?.statusCode || 502),
-      statusMessage: err?.statusCode === 404
-        ? `Document ${id} not found in Paperless`
-        : 'Failed to download document from Paperless'
+  const response = await $fetch
+    .raw(`${baseURL}/api/documents/${id}/download/` as string, {
+      headers: {
+        Authorization: `Token ${token}`
+      },
+      responseType: 'arrayBuffer'
     })
-  })
+    .catch((error: unknown) => {
+      const err = error as { statusCode?: number }
+      throw createError({
+        statusCode: err?.statusCode === 404 ? 404 : err?.statusCode || 502,
+        statusMessage:
+          err?.statusCode === 404
+            ? `Document ${id} not found in Paperless`
+            : 'Failed to download document from Paperless'
+      })
+    })
 
-  const contentType = (response.headers.get('content-type') || 'application/octet-stream').split(';')[0]!.trim()
+  const contentType = (response.headers.get('content-type') || 'application/octet-stream')
+    .split(';')[0]!
+    .trim()
 
   if (!SUPPORTED_TYPES.has(contentType)) {
     throw createError({

@@ -8,11 +8,14 @@ import { z } from 'zod'
  * Deletes a chat and all its associated messages (cascade).
  * Only the owner of the chat can delete it.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   const userId = getChatUserId(event)
-  const { id } = await getValidatedRouterParams(event, z.object({
-    id: z.string()
-  }).parse)
+  const { id } = await getValidatedRouterParams(
+    event,
+    z.object({
+      id: z.string()
+    }).parse
+  )
 
   // Verify the chat exists and belongs to the requesting user
   const chat = await db.query.chats.findFirst({
@@ -26,7 +29,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return await db.delete(schema.chats)
+  return await db
+    .delete(schema.chats)
     .where(and(eq(schema.chats.id, id as string), eq(schema.chats.userId, userId)))
     .returning()
 })

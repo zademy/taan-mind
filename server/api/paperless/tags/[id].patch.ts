@@ -13,7 +13,10 @@ const bodySchema = z.object({
  * Updates an existing tag in Paperless-ngx.
  */
 export default defineEventHandler(async (event): Promise<PaperlessTag> => {
-  const { id } = await getValidatedRouterParams(event, z.object({ id: z.coerce.number().int().positive() }).parse)
+  const { id } = await getValidatedRouterParams(
+    event,
+    z.object({ id: z.coerce.number().int().positive() }).parse
+  )
   const body = await readValidatedBody(event, bodySchema.parse)
   const client = usePaperlessClient(event)
 
@@ -23,7 +26,7 @@ export default defineEventHandler(async (event): Promise<PaperlessTag> => {
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number, statusMessage?: string }
+    const err = error as { statusCode?: number; statusMessage?: string }
     throw createError({
       statusCode: err?.statusCode || 502,
       statusMessage: err?.statusMessage || `Failed to update tag ${id} in Paperless`

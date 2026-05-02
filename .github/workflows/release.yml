@@ -1,0 +1,24 @@
+name: Auto Release on Merge to Master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release-on-merge:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Create GitHub Release
+        id: release
+        uses: dexwritescode/release-on-merge-action@v1
+        with:
+          initial-version: '1.0.0'
+          tag-prefix: v

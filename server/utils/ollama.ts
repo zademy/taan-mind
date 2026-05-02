@@ -68,7 +68,7 @@ export async function listOllamaModels(event: H3Event): Promise<OllamaModel[]> {
   const tags = await useOllamaClient(event)<OllamaTagsResponse>('/api/tags')
 
   return (tags.models ?? [])
-    .map((model) => {
+    .map(model => {
       const name = model.name || model.model || ''
       return { ...model, name }
     })

@@ -19,7 +19,7 @@ const SUPPORTED_PROVIDERS: ProviderName[] = ['minimax', 'glm', 'ollama']
  * @returns An object with `provider` and `modelId`.
  * @throws Throws a 400 error if the provider is unsupported or the model ID is missing.
  */
-function splitProviderModel(model: string): { provider: ProviderName, modelId: string } {
+function splitProviderModel(model: string): { provider: ProviderName; modelId: string } {
   const [provider, ...modelParts] = model.split('/')
   const modelId = modelParts.join('/')
 

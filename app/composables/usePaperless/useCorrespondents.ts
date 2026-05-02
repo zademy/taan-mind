@@ -29,9 +29,12 @@ export function useCorrespondents(options: CorrespondentListOptions = {}) {
 
   const fetchFn = lazy ? useLazyFetch : useFetch
 
-  return fetchFn<PaperlessPaginatedResponse<PaperlessCorrespondent>>('/api/paperless/correspondents', {
-    query
-  })
+  return fetchFn<PaperlessPaginatedResponse<PaperlessCorrespondent>>(
+    '/api/paperless/correspondents',
+    {
+      query
+    }
+  )
 }
 
 /**

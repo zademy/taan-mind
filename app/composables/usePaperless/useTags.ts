@@ -60,7 +60,7 @@ export function useTagMutations() {
    * @param body - The tag payload (at minimum a `name`; optionally `color` and `is_inbox_tag`).
    * @returns The newly created tag.
    */
-  async function create(body: { name: string, color?: string, is_inbox_tag?: boolean }) {
+  async function create(body: { name: string; color?: string; is_inbox_tag?: boolean }) {
     return await $fetch<PaperlessTag>('/api/paperless/tags', {
       method: 'POST',
       headers: { [headerName]: csrf },
@@ -75,7 +75,10 @@ export function useTagMutations() {
    * @param body - The fields to update.
    * @returns The updated tag.
    */
-  async function update(id: number, body: Partial<{ name: string, color: string, is_inbox_tag: boolean }>) {
+  async function update(
+    id: number,
+    body: Partial<{ name: string; color: string; is_inbox_tag: boolean }>
+  ) {
     return await $fetch<PaperlessTag>(`/api/paperless/tags/${id}`, {
       method: 'PATCH',
       headers: { [headerName]: csrf },

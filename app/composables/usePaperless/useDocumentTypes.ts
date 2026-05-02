@@ -29,9 +29,12 @@ export function useDocumentTypes(options: DocumentTypeListOptions = {}) {
 
   const fetchFn = lazy ? useLazyFetch : useFetch
 
-  return fetchFn<PaperlessPaginatedResponse<PaperlessDocumentType>>('/api/paperless/document-types', {
-    query
-  })
+  return fetchFn<PaperlessPaginatedResponse<PaperlessDocumentType>>(
+    '/api/paperless/document-types',
+    {
+      query
+    }
+  )
 }
 
 /**

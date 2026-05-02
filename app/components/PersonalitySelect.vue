@@ -6,6 +6,12 @@
 <script setup lang="ts">
 /** Destructure the reactive personality reference and available personalities list from the composable */
 const { personality, personalities } = usePersonality()
+
+/** Icon for the currently selected personality. */
+const selectedPersonalityIcon = computed(
+  () =>
+    personalities.value.find(option => option.value === personality.value)?.icon ?? 'i-lucide-smile'
+)
 </script>
 
 <template>
@@ -14,14 +20,13 @@ const { personality, personalities } = usePersonality()
     v-model="personality"
     :items="personalities"
     size="sm"
-    :icon="personalities.find((p) => p.value === personality)?.icon"
+    :icon="selectedPersonalityIcon"
     variant="ghost"
     value-key="value"
     class="data-[state=open]:bg-elevated"
     :ui="{
       content: 'min-w-72',
-      trailingIcon:
-        'group-data-[state=open]:rotate-180 transition-transform duration-200'
+      trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200'
     }"
   />
 </template>
