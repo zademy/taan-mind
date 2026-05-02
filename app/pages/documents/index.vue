@@ -10,6 +10,7 @@
 -->
 <script setup lang="ts">
 import { h, resolveComponent } from 'vue'
+import { LazyModalConfirm } from '#components'
 import type { TableColumn } from '@nuxt/ui'
 import type { CacheDocument } from '~/composables/useCacheDocuments'
 
@@ -17,9 +18,16 @@ const UBadge = resolveComponent('UBadge')
 const UButton = resolveComponent('UButton')
 
 const { csrf, headerName } = useCsrf()
+const overlay = useOverlay()
 
 /** Set of document IDs currently being reprocessed (used to show loading state) */
 const reprocessingIds = ref(new Set<number>())
+
+/** Set of document IDs currently being deleted */
+const deletingIds = ref(new Set<number>())
+
+/** Lazy-loaded confirmation modal for document deletion */
+let deleteModal: ReturnType<typeof overlay.create> | null = null
 
 /**
  * Triggers reprocessing of a cached document.
@@ -39,6 +47,46 @@ async function reprocessDocument(id: number) {
     await refresh()
   } finally {
     reprocessingIds.value.delete(id)
+  }
+}
+
+/** Requests user confirmation before deleting a cached document */
+async function confirmDelete(id: number) {
+  if (!deleteModal) {
+    deleteModal = overlay.create(LazyModalConfirm, {
+      props: {
+        title: 'Eliminar del caché',
+        description:
+          '¿Eliminar este registro del caché? Esta acción no afecta al documento en Paperless.'
+      }
+    })
+  }
+  const instance = deleteModal.open()
+  try {
+    await instance.result
+    await deleteDocument(id)
+  } catch {
+    // User cancelled
+  }
+}
+
+/**
+ * Deletes a document from the local SQLite cache.
+ * Includes a minimum 1.5s delay to prevent UI flicker on fast responses.
+ */
+async function deleteDocument(id: number) {
+  deletingIds.value.add(id)
+  try {
+    await Promise.all([
+      $fetch(`/api/cache/documents/${id}`, {
+        method: 'DELETE',
+        headers: { [headerName]: csrf }
+      }),
+      new Promise(resolve => setTimeout(resolve, 1500))
+    ])
+    await refresh()
+  } finally {
+    deletingIds.value.delete(id)
   }
 }
 
@@ -418,18 +466,33 @@ const columns: TableColumn<CacheDocument>[] = [
     cell: ({ row }) => {
       const id = row.original.id
       const isProcessing = row.original.processed === 2
-      const isLoading = reprocessingIds.value.has(id)
-      return h(UButton, {
-        'icon': 'i-lucide-refresh-cw',
-        'size': 'xs',
-        'variant': 'ghost',
-        'color': 'neutral',
-        'title': 'Reprocess',
-        'aria-label': `Reprocess document ${id}`,
-        'disabled': isProcessing || isLoading,
-        'loading': isLoading,
-        'onClick': () => reprocessDocument(id)
-      })
+      const isReprocessing = reprocessingIds.value.has(id)
+      const isDeleting = deletingIds.value.has(id)
+      const busy = isProcessing || isReprocessing || isDeleting
+      return h('div', { class: 'flex items-center justify-center gap-1' }, [
+        h(UButton, {
+          'icon': 'i-lucide-refresh-cw',
+          'size': 'xs',
+          'variant': 'ghost',
+          'color': 'neutral',
+          'title': 'Reprocess',
+          'aria-label': `Reprocess document ${id}`,
+          'disabled': busy,
+          'loading': isReprocessing,
+          'onClick': () => reprocessDocument(id)
+        }),
+        h(UButton, {
+          'icon': 'i-lucide-trash-2',
+          'size': 'xs',
+          'variant': 'ghost',
+          'color': 'error',
+          'title': 'Delete from cache',
+          'aria-label': `Delete document ${id} from cache`,
+          'disabled': busy,
+          'loading': isDeleting,
+          'onClick': () => confirmDelete(id)
+        })
+      ])
     }
   }
 ]
@@ -507,7 +570,10 @@ const columns: TableColumn<CacheDocument>[] = [
         </div>
 
         <!-- Documents data table -->
-        <div v-if="showTableSkeleton" class="overflow-hidden rounded-xl ring-1 ring-default/50">
+        <div
+          v-if="showTableSkeleton"
+          class="overflow-hidden rounded-xl ring-1 ring-default/50"
+        >
           <div
             v-for="row in tableSkeletonRows"
             :key="row"

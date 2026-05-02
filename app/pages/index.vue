@@ -152,7 +152,10 @@ async function onSubmit(event?: Event) {
               <span
                 class="bg-linear-to-r from-neutral-900 via-neutral-800 to-neutral-700 dark:from-neutral-100 dark:via-neutral-200 dark:to-neutral-300 bg-clip-text text-transparent"
               >
-                {{ greeting }}
+                <ClientOnly>
+                  {{ greeting }}
+                  <template #fallback>Hello</template>
+                </ClientOnly>
               </span>
             </h1>
             <p class="text-lg text-muted max-w-md">
@@ -173,13 +176,15 @@ async function onSubmit(event?: Event) {
               rows="2"
               aria-label="Initial chat message"
               :disabled="loading"
-              class="max-h-[220px] min-h-16 w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-base text-highlighted placeholder:text-dimmed outline-none disabled:cursor-not-allowed disabled:opacity-75"
+              class="max-h-55 min-h-16 w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-base text-highlighted placeholder:text-dimmed outline-none disabled:cursor-not-allowed disabled:opacity-75"
               @input="resizeTextarea"
               @keydown.enter.exact.prevent="onSubmit"
             />
 
             <!-- Bottom toolbar: model/personality selectors and send button -->
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                 <ModelSelect aria-label="Select AI model" />
                 <PersonalitySelect aria-label="Select AI personality" />
@@ -223,7 +228,10 @@ async function onSubmit(event?: Event) {
               :disabled="loading"
               @click="createChat(quickChat.label)"
             >
-              <span :class="[quickChat.icon, 'quick-action-icon']" aria-hidden="true" />
+              <span
+                :class="[quickChat.icon, 'quick-action-icon']"
+                aria-hidden="true"
+              />
               <span class="quick-action-label">{{ quickChat.label }}</span>
             </button>
           </div>

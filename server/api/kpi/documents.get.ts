@@ -1,5 +1,5 @@
 import { db, schema } from 'hub:db'
-import { count, sql, desc } from 'drizzle-orm'
+import { count, sql, desc, isNull } from 'drizzle-orm'
 
 /**
  * Maps processing status codes to human-readable labels.
@@ -21,16 +21,18 @@ const STATUS_LABELS: Record<number, string> = {
 export default defineEventHandler(async () => {
   const t = schema.paperlessDocuments
 
-  const [totalRow] = await db.select({ value: count() }).from(t)
+  const [totalRow] = await db.select({ value: count() }).from(t).where(isNull(t.deletedAt))
 
   const statusRows = await db
     .select({ status: t.processed, value: count() })
     .from(t)
+    .where(isNull(t.deletedAt))
     .groupBy(t.processed)
 
   const mimeRows = await db
     .select({ label: t.mimeType, value: count() })
     .from(t)
+    .where(isNull(t.deletedAt))
     .groupBy(t.mimeType)
     .orderBy(desc(count()))
     .limit(8)
@@ -41,12 +43,14 @@ export default defineEventHandler(async () => {
       value: count()
     })
     .from(t)
+    .where(isNull(t.deletedAt))
     .groupBy(sql`strftime('%Y-%m', ${t.paperlessCreated})`)
     .orderBy(sql`strftime('%Y-%m', ${t.paperlessCreated})`)
 
   const docTypeRows = await db
     .select({ label: t.documentType, value: count() })
     .from(t)
+    .where(isNull(t.deletedAt))
     .groupBy(t.documentType)
     .orderBy(desc(count()))
     .limit(8)

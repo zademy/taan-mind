@@ -344,6 +344,10 @@ defineShortcuts({
           />
         </div>
       </template>
+
+      <template #footer="{ collapsed }">
+        <span v-if="!collapsed" class="text-xs text-dimmed px-2"> v1.0.1 </span>
+      </template>
     </UDashboardSidebar>
 
     <!-- Main content area with rounded card styling and glassmorphism effect -->

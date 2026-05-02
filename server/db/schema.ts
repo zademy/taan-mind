@@ -74,7 +74,8 @@ export const paperlessDocuments = sqliteTable('paperless_documents', {
   paperlessCreated: integer('paperless_created', { mode: 'timestamp' }),
   paperlessModified: integer('paperless_modified', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date())
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  deletedAt: integer('deleted_at', { mode: 'timestamp' })
 }, table => [
   index('paperless_docs_processed_idx').on(table.processed),
   index('paperless_docs_updated_idx').on(table.updatedAt)

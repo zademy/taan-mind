@@ -1,5 +1,5 @@
 import { db, schema } from 'hub:db'
-import { desc, asc, eq, like, or, and, count } from 'drizzle-orm'
+import { desc, asc, eq, like, or, and, count, isNull } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 
 /**
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const t = schema.paperlessDocuments
 
   // Build where clause
-  const conditions = []
+  const conditions = [isNull(t.deletedAt)]
   if (processed !== undefined) conditions.push(eq(t.processed, processed))
   if (search) {
     conditions.push(
