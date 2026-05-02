@@ -49,6 +49,28 @@
 | [Comark](https://comark.ca/)                         | Markdown rendering                 |
 | [nuxt-charts](https://github.com/nuxt-modules/chart) | Chart.js visualizations            |
 
+## Screenshots
+
+<p align="center">
+  <a href="images/01.png"><img src="images/01.png" width="32%"></a>
+  <a href="images/02.png"><img src="images/02.png" width="32%"></a>
+  <a href="images/03.png"><img src="images/03.png" width="32%"></a>
+</p>
+<p align="center">
+  <a href="images/04.png"><img src="images/04.png" width="32%"></a>
+  <a href="images/05.png"><img src="images/05.png" width="32%"></a>
+  <a href="images/06.png"><img src="images/06.png" width="32%"></a>
+</p>
+<p align="center">
+  <a href="images/07.png"><img src="images/07.png" width="32%"></a>
+  <a href="images/08.png"><img src="images/08.png" width="32%"></a>
+  <a href="images/09.png"><img src="images/09.png" width="32%"></a>
+</p>
+<p align="center">
+  <a href="images/10.png"><img src="images/10.png" width="32%"></a>
+  <a href="images/11.png"><img src="images/11.png" width="32%"></a>
+</p>
+
 ## Getting Started
 
 ### Prerequisites
