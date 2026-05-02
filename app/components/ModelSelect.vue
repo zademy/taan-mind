@@ -5,7 +5,15 @@
 -->
 <script setup lang="ts">
 /** Destructure the reactive model reference and available models list from the composable */
-const { model, models } = useModels()
+const { model, models, selectedModel, status } = useModels()
+
+const modelIcon = computed(() => {
+  if (status.value === 'pending') {
+    return 'i-lucide-loader-circle'
+  }
+
+  return selectedModel.value?.icon ?? 'i-lucide-brain-circuit'
+})
 </script>
 
 <template>
@@ -14,7 +22,7 @@ const { model, models } = useModels()
     v-model="model"
     :items="models"
     size="sm"
-    :icon="models.find(m => m.value === model)?.icon"
+    :icon="modelIcon"
     variant="ghost"
     value-key="value"
     class="data-[state=open]:bg-elevated"

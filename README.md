@@ -25,7 +25,7 @@
 
 ## Features
 
-- **AI Chat** — Streaming conversations with multiple AI providers (MiniMax, GLM) and personality presets
+- **AI Chat** — Streaming conversations with multiple AI providers (MiniMax, GLM, and available Ollama models) and personality presets
 - **Paperless-ngx Integration** — Full document management proxy with CRUD, search, and binary download
 - **Automatic OCR** — Background document processing pipeline using Ollama + MuPDF
 - **AI Metadata Extraction** — Auto-suggest titles, tags, correspondents, and document types
@@ -139,7 +139,7 @@ The app runs on `http://localhost:3000` and Paperless-ngx on `http://localhost:8
 
 ## Ollama Runtime
 
-Docker Compose does not start Ollama. Run Ollama outside this stack and point the app to it with `NUXT_OLLAMA_BASE_URL`.
+Docker Compose does not start Ollama. Run Ollama outside this stack and point the app to it with `NUXT_OLLAMA_BASE_URL`. When reachable, locally pulled Ollama models are automatically listed in the chat model selector.
 
 This is intentional. Ollama runtime choices depend on the host operating system and hardware:
 
@@ -148,10 +148,11 @@ This is intentional. Ollama runtime choices depend on the host operating system 
 - **Linux + AMD** — Requires ROCm and different device mappings
 - **No GPU** — Run Ollama on CPU
 
-Install Ollama for your host, then pull the OCR model:
+Install Ollama for your host, then pull the OCR model and any chat models you want to expose:
 
 ```bash
 ollama pull glm-ocr:latest
+ollama pull llama3.2:latest
 ```
 
 For Docker Compose, configure the app container to reach host Ollama:
@@ -240,9 +241,10 @@ paperless-ui-chat/
 | GLM      | `glm/glm-5`            | GLM 5        |
 | GLM      | `glm/glm-5.1`          | GLM 5.1      |
 | GLM      | `glm/glm-5-turbo`      | GLM 5 Turbo  |
+| Ollama   | `ollama/<model-name>`  | Discovered from `/api/tags` when Ollama is reachable |
 
 > [!NOTE]
-> More AI model providers and model presets will be added over time as the project evolves.
+> Ollama models are dynamic. If `NUXT_OLLAMA_BASE_URL` is not configured or Ollama is unreachable, the selector still shows the static MiniMax/GLM models.
 
 ## Scripts
 
