@@ -248,15 +248,19 @@ paperless-ui-chat/
 
 ## Scripts
 
-| Script             | Purpose                          |
-| ------------------ | -------------------------------- |
-| `pnpm dev`         | Start development server         |
-| `pnpm build`       | Build for production             |
-| `pnpm preview`     | Preview production build         |
-| `pnpm lint`        | Run ESLint                       |
-| `pnpm typecheck`   | Run Vue TypeScript type checking |
-| `pnpm db:generate` | Generate Drizzle migrations      |
-| `pnpm db:migrate`  | Run database migrations          |
+| Script              | Purpose                                          |
+| ------------------- | ------------------------------------------------ |
+| `pnpm dev`          | Start development server                         |
+| `pnpm build`        | Build for production                             |
+| `pnpm build:check`  | Verify formatting and linting, then build        |
+| `pnpm preview`      | Preview production build                         |
+| `pnpm lint`         | Run ESLint                                       |
+| `pnpm lint:fix`     | Run ESLint and apply safe fixes                  |
+| `pnpm format`       | Format project files with Prettier               |
+| `pnpm format:check` | Check Prettier formatting without changing files |
+| `pnpm typecheck`    | Run Vue TypeScript type checking                 |
+| `pnpm db:generate`  | Generate Drizzle migrations                      |
+| `pnpm db:migrate`   | Run database migrations                          |
 
 ## License
 
