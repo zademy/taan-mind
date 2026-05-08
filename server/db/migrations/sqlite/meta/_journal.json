@@ -71,6 +71,13 @@
       "when": 1777849848571,
       "tag": "0009_nappy_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1778241975931,
+      "tag": "0010_silky_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,7 @@
  * Paperless document cache), their relations, indexes, and shared column
  * helpers using Drizzle ORM's SQLite adapter.
  */
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 
 /**
@@ -39,11 +39,6 @@ export const chats = sqliteTable(
   },
   table => [index('chats_user_id_idx').on(table.userId)]
 )
-
-/** Defines the one-to-many relationship between a chat and its messages. */
-export const chatsRelations = relations(chats, ({ many }) => ({
-  messages: many(messages)
-}))
 
 /**
  * Messages table — stores individual messages within a chat.
@@ -148,3 +143,44 @@ export const paperlessDocuments = sqliteTable(
     index('paperless_docs_updated_idx').on(table.updatedAt)
   ]
 )
+
+/**
+ * Chat documents join table — stores up to five Paperless documents attached
+ * to a chat as persistent context, preserving selection order.
+ */
+export const chatDocuments = sqliteTable(
+  'chat_documents',
+  {
+    chatId: text('chat_id')
+      .notNull()
+      .references(() => chats.id, { onDelete: 'cascade' }),
+    documentId: integer('document_id')
+      .notNull()
+      .references(() => paperlessDocuments.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull().default(0),
+    ...timestamps
+  },
+  table => [
+    primaryKey({ columns: [table.chatId, table.documentId] }),
+    index('chat_documents_chat_id_idx').on(table.chatId),
+    index('chat_documents_document_id_idx').on(table.documentId)
+  ]
+)
+
+/** Defines the one-to-many relationships between a chat and its records. */
+export const chatsRelations = relations(chats, ({ many }) => ({
+  messages: many(messages),
+  documents: many(chatDocuments)
+}))
+
+/** Defines the many-to-one relationships for chat document attachments. */
+export const chatDocumentsRelations = relations(chatDocuments, ({ one }) => ({
+  chat: one(chats, {
+    fields: [chatDocuments.chatId],
+    references: [chats.id]
+  }),
+  document: one(paperlessDocuments, {
+    fields: [chatDocuments.documentId],
+    references: [paperlessDocuments.id]
+  })
+}))

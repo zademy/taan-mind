@@ -6,6 +6,7 @@ export interface UIChat {
   label: string
   icon: string
   createdAt: string
+  documentCount?: number
 }
 
 /**
