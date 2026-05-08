@@ -3,36 +3,59 @@
  *
  * Maps model identifiers (e.g., `minimax/MiniMax-M2.7`) to AI SDK language model
  * instances by selecting the appropriate provider client with credentials from
- * runtime config. Also validates that Ollama models exist at runtime since they
- * can be added or removed while the application is running.
+ * runtime config. Also validates that runtime-discovered models exist since
+ * Ollama/OpenRouter models can be added, removed, or deprecated while the application runs.
  */
 import type { H3Event } from 'h3'
+import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createMinimax } from 'vercel-minimax-ai-provider'
 import type { ModelProvider } from '#shared/utils/models'
 import {
   isNovaReasoningModel,
+  isOpenAIReasoningModel,
   isSelectableModel,
-  isStaticModel,
-  isSupportedModel
+  isStaticModel
 } from '#shared/utils/models'
 import {
   getOllamaOpenAIBaseUrlFromConfig,
   hasOllamaModel,
   type OllamaRuntimeConfig
 } from './ollama'
+import {
+  hasOpenRouterModel,
+  OPENROUTER_OPENAI_BASE_URL,
+  type OpenRouterRuntimeConfig
+} from './openrouter'
 
 /** Supported AI model provider names. */
 type ProviderName = ModelProvider
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 type LanguageModelProviderOptions = Record<string, { [key: string]: JsonValue | undefined }>
+type OpenAIReasoningSummary = 'auto' | 'detailed'
 
-const SUPPORTED_PROVIDERS: ProviderName[] = ['minimax', 'glm', 'nova', 'ollama']
+interface LanguageModelProviderOptionsConfig {
+  /**
+   * Ask OpenAI Responses models to stream/return a reasoning summary.
+   * Use this only where the client consumes reasoning parts, such as chat UI.
+   */
+  openAIReasoningSummary?: OpenAIReasoningSummary
+}
+
+const SUPPORTED_PROVIDERS: ProviderName[] = [
+  'minimax',
+  'glm',
+  'openai',
+  'nova',
+  'ollama',
+  'openrouter'
+]
 
 const DEFAULT_NOVA_BASE_URL = 'https://api.nova.amazon.com/v1'
+const DEFAULT_OPENAI_REASONING_EFFORT = 'medium'
 
 /** Runtime config subset required to resolve supported language models. */
-export interface LanguageModelRuntimeConfig extends OllamaRuntimeConfig {
+export interface LanguageModelRuntimeConfig extends OllamaRuntimeConfig, OpenRouterRuntimeConfig {
   /** MiniMax API key. */
   minimaxApiKey?: unknown
   /** Optional custom MiniMax base URL. */
@@ -41,10 +64,14 @@ export interface LanguageModelRuntimeConfig extends OllamaRuntimeConfig {
   glmApiKey?: unknown
   /** GLM OpenAI-compatible base URL. */
   glmBaseUrl?: unknown
+  /** OpenAI API key. */
+  openaiApiKey?: unknown
   /** Nova API key. */
   novaApiKey?: unknown
   /** Nova OpenAI-compatible base URL. */
   novaBaseUrl?: unknown
+  /** OpenRouter API key. */
+  openrouterApiKey?: unknown
 }
 
 /**
@@ -101,8 +128,8 @@ function getRuntimeString(value: unknown): string | undefined {
  * Resolves a model identifier into an AI SDK language model instance.
  *
  * Uses the provider prefix in the model identifier to select the correct
- * provider client (MiniMax or GLM) and configures it with the appropriate
- * API key and base URL from runtime config.
+ * provider client (MiniMax, GLM, OpenAI, Nova, OpenRouter, or Ollama) and configures it
+ * with the appropriate API key and base URL from runtime config.
  *
  * @param model - The full model identifier (e.g., `minimax/MiniMax-M2.7`).
  * @param event - The H3 event, used to access runtime configuration.
@@ -156,6 +183,18 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
     return glm(modelId)
   }
 
+  // Configure OpenAI provider through the Responses API for streaming/reasoning support
+  if (provider === 'openai') {
+    const openai = createOpenAI({
+      apiKey: requireRuntimeSecret(
+        getRuntimeString(config.openaiApiKey) ?? process.env.OPENAI_API_KEY,
+        'OpenAI API key'
+      )
+    })
+
+    return openai.responses(modelId)
+  }
+
   // Configure Nova (OpenAI-compatible) provider
   if (provider === 'nova') {
     const nova = createOpenAICompatible({
@@ -172,6 +211,20 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
     })
 
     return nova(modelId)
+  }
+
+  // Configure OpenRouter (OpenAI-compatible) provider
+  if (provider === 'openrouter') {
+    const openrouter = createOpenAICompatible({
+      name: 'openrouter',
+      apiKey: requireRuntimeSecret(
+        getRuntimeString(config.openrouterApiKey) ?? process.env.OPENROUTER_API_KEY,
+        'OpenRouter API key'
+      ),
+      baseURL: OPENROUTER_OPENAI_BASE_URL
+    })
+
+    return openrouter(modelId)
   }
 
   // Configure Ollama (OpenAI-compatible) provider
@@ -195,12 +248,22 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
  * @returns Provider options to pass into AI SDK generation calls.
  */
 export function getLanguageModelProviderOptions(
-  model: string
+  model: string,
+  options: LanguageModelProviderOptionsConfig = {}
 ): LanguageModelProviderOptions | undefined {
   if (isNovaReasoningModel(model)) {
     return {
       nova: {
         reasoningEffort: 'high'
+      }
+    }
+  }
+
+  if (isOpenAIReasoningModel(model)) {
+    return {
+      openai: {
+        reasoningEffort: DEFAULT_OPENAI_REASONING_EFFORT,
+        reasoningSummary: options.openAIReasoningSummary
       }
     }
   }
@@ -212,14 +275,14 @@ export function getLanguageModelProviderOptions(
  * Validates that a language model can be used for chat.
  *
  * Static provider models are validated against the shared static registry.
- * Ollama models are validated against the live `/api/tags` response because
- * local models can be added or removed while the app is running.
+ * Runtime-discovered models are validated against their live model-list APIs
+ * because local Ollama models can be removed and OpenRouter models can be deprecated.
  *
  * @param model - The full model identifier (for example `ollama/llama3.2:latest`).
  * @param event - The H3 event, used to access runtime configuration.
  */
 export async function assertLanguageModelAvailable(model: string, event: H3Event): Promise<void> {
-  if (!isSupportedModel(model)) {
+  if (!isSelectableModel(model)) {
     throw createError({
       statusCode: 400,
       statusMessage: `Unsupported model: ${model}`
@@ -232,26 +295,44 @@ export async function assertLanguageModelAvailable(model: string, event: H3Event
 
   const { provider, modelId } = splitProviderModel(model)
 
-  if (provider !== 'ollama') {
+  if (provider === 'ollama') {
+    try {
+      if (await hasOllamaModel(event, modelId)) {
+        return
+      }
+    } catch {
+      throw createError({
+        statusCode: 503,
+        statusMessage: 'Ollama is not available'
+      })
+    }
+
     throw createError({
       statusCode: 400,
-      statusMessage: `Unsupported model: ${model}`
+      statusMessage: `Ollama model is not available: ${modelId}`
     })
   }
 
-  try {
-    if (await hasOllamaModel(event, modelId)) {
-      return
+  if (provider === 'openrouter') {
+    try {
+      if (await hasOpenRouterModel(event, modelId)) {
+        return
+      }
+    } catch {
+      throw createError({
+        statusCode: 503,
+        statusMessage: 'OpenRouter is not available'
+      })
     }
-  } catch {
+
     throw createError({
-      statusCode: 503,
-      statusMessage: 'Ollama is not available'
+      statusCode: 400,
+      statusMessage: `OpenRouter model is not available: ${modelId}`
     })
   }
 
   throw createError({
     statusCode: 400,
-    statusMessage: `Ollama model is not available: ${modelId}`
+    statusMessage: `Unsupported model: ${model}`
   })
 }

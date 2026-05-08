@@ -31,7 +31,7 @@ export function useModels() {
   }
 
   // Runtime models are loaded asynchronously; wait for the API result before
-  // deciding that a previously selected Ollama model is unavailable.
+  // deciding that a previously selected dynamic model is unavailable.
   watch(
     [models, status],
     () => {

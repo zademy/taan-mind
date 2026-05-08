@@ -25,8 +25,13 @@ const modelIcon = computed(() => {
     :icon="modelIcon"
     variant="ghost"
     value-key="value"
-    class="data-[state=open]:bg-elevated"
+    :search-input="{ placeholder: 'Search models...' }"
+    class="min-w-44 max-w-56 data-[state=open]:bg-elevated"
     :ui="{
+      content: 'w-80 min-w-fit',
+      viewport: 'max-h-80',
+      item: 'py-2',
+      itemLabel: 'truncate pe-2',
       trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200'
     }"
   />

@@ -26,7 +26,7 @@
 
 ## Features
 
-- **AI Chat** — Streaming conversations with multiple AI providers (MiniMax, GLM, Nova, and available Ollama models) and personality presets
+- **AI Chat** — Streaming conversations with multiple AI providers (MiniMax, GLM, OpenAI, OpenRouter, Nova, and available Ollama models) and personality presets
 - **[Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) Integration** — Full document management proxy with CRUD, search, and binary download
 - **Automatic OCR** — Background document processing pipeline using Ollama + MuPDF
 - **AI Metadata Extraction** — Auto-suggest titles, tags, correspondents, and document types
@@ -77,7 +77,7 @@ flowchart LR
   end
 
   subgraph ai["AI and OCR Models"]
-    externalModels["External AI Providers\nMiniMax, GLM, Nova"]
+    externalModels["External AI Providers\nMiniMax, GLM, OpenAI, OpenRouter, Nova"]
     ollamaChat["Ollama Chat Models\nnon-OCR models"]
     ollamaOcr["Ollama OCR Models\nglm-ocr, OCR-GLM"]
     mupdf["MuPDF\nPDF/image page extraction"]
@@ -134,7 +134,7 @@ flowchart LR
 At a high level:
 
 - Users interact with the Nuxt client, which calls Nitro API routes.
-- Chat requests use the shared model registry and can call MiniMax, GLM, Nova, or selectable non-OCR Ollama models.
+- Chat requests use the shared model registry and can call MiniMax, GLM, OpenAI, OpenRouter, Nova, or selectable non-OCR Ollama models.
 - OCR requests use MuPDF and OCR-specific Ollama models to extract document text.
 - The Paperless proxy keeps Paperless operations behind the app API.
 - The sync worker imports Paperless document metadata into the app database.
@@ -215,23 +215,25 @@ The app runs on `http://localhost:3000` and Paperless-ngx on `http://localhost:8
 
 ## Environment Variables
 
-| Variable                       | Required | Description                                                       |
-| ------------------------------ | -------- | ----------------------------------------------------------------- |
-| `MINIMAX_API_KEY`              | Yes      | MiniMax API key                                                   |
-| `MINIMAX_BASE_URL`             | No       | MiniMax API endpoint                                              |
-| `GLM_API_KEY`                  | Yes      | Z.AI GLM API key                                                  |
-| `GLM_BASE_URL`                 | No       | Z.AI API endpoint                                                 |
-| `NOVA_API_KEY`                 | Yes      | Amazon Nova API key                                               |
-| `NOVA_BASE_URL`                | No       | Amazon Nova API endpoint                                          |
-| `NUXT_PAPERLESS_BASE_URL`      | Yes      | Paperless-ngx instance URL                                        |
-| `NUXT_PAPERLESS_API_TOKEN`     | Yes      | Paperless-ngx API token                                           |
-| `PAPERLESS_BOOTSTRAP_USER`     | No       | Admin user created by Docker Compose (`paperless`)                |
-| `PAPERLESS_BOOTSTRAP_PASSWORD` | No       | Password for the bootstrap admin user (`paperless`)               |
-| `PAPERLESS_BOOTSTRAP_EMAIL`    | No       | Email for the bootstrap admin user (`paperless@example.local`)    |
-| `NUXT_OLLAMA_BASE_URL`         | No       | Ollama server URL (`http://host.docker.internal:11434` in Docker) |
-| `NUXT_OLLAMA_MODEL`            | No       | Ollama model for OCR (`glm-ocr:latest`)                           |
-| `NUXT_SYNC_INTERVAL_MS`        | No       | Paperless sync interval in ms (`5000`)                            |
-| `NUXT_PROCESS_INTERVAL_MS`     | No       | Document processing interval in ms (`10000`)                      |
+| Variable                       | Required | Description                                                        |
+| ------------------------------ | -------- | ------------------------------------------------------------------ |
+| `MINIMAX_API_KEY`              | Yes      | MiniMax API key                                                    |
+| `MINIMAX_BASE_URL`             | No       | MiniMax API endpoint                                               |
+| `GLM_API_KEY`                  | Yes      | Z.AI GLM API key                                                   |
+| `GLM_BASE_URL`                 | No       | Z.AI API endpoint                                                  |
+| `OPENAI_API_KEY`               | Yes      | OpenAI API key                                                     |
+| `OPENROUTER_API_KEY`           | No       | OpenRouter API key for dynamic model discovery and chat/enrichment |
+| `NOVA_API_KEY`                 | Yes      | Amazon Nova API key                                                |
+| `NOVA_BASE_URL`                | No       | Amazon Nova API endpoint                                           |
+| `NUXT_PAPERLESS_BASE_URL`      | Yes      | Paperless-ngx instance URL                                         |
+| `NUXT_PAPERLESS_API_TOKEN`     | Yes      | Paperless-ngx API token                                            |
+| `PAPERLESS_BOOTSTRAP_USER`     | No       | Admin user created by Docker Compose (`paperless`)                 |
+| `PAPERLESS_BOOTSTRAP_PASSWORD` | No       | Password for the bootstrap admin user (`paperless`)                |
+| `PAPERLESS_BOOTSTRAP_EMAIL`    | No       | Email for the bootstrap admin user (`paperless@example.local`)     |
+| `NUXT_OLLAMA_BASE_URL`         | No       | Ollama server URL (`http://host.docker.internal:11434` in Docker)  |
+| `NUXT_OLLAMA_MODEL`            | No       | Ollama model for OCR (`glm-ocr:latest`)                            |
+| `NUXT_SYNC_INTERVAL_MS`        | No       | Paperless sync interval in ms (`5000`)                             |
+| `NUXT_PROCESS_INTERVAL_MS`     | No       | Document processing interval in ms (`10000`)                       |
 
 ## Ollama Runtime
 
@@ -331,21 +333,36 @@ paperless-ui-chat/
 
 ## AI Models
 
-| Provider | Model ID               | Display Name                                         |
-| -------- | ---------------------- | ---------------------------------------------------- |
-| MiniMax  | `minimax/MiniMax-M2.7` | MiniMax M2.7                                         |
-| GLM      | `glm/glm-5`            | GLM 5                                                |
-| GLM      | `glm/glm-5.1`          | GLM 5.1                                              |
-| GLM      | `glm/glm-5-turbo`      | GLM 5 Turbo                                          |
-| Nova     | `nova/nova-2-lite-v1`  | Amazon Nova 2 Lite                                   |
-| Nova     | `nova/nova-micro-v1`   | Amazon Nova Micro                                    |
-| Nova     | `nova/nova-lite-v1`    | Amazon Nova Lite                                     |
-| Nova     | `nova/nova-pro-v1`     | Amazon Nova Pro                                      |
-| Nova     | `nova/nova-premier-v1` | Amazon Nova Premier                                  |
-| Ollama   | `ollama/<model-name>`  | Discovered from `/api/tags` when Ollama is reachable |
+| Provider   | Model ID                           | Display Name                                                  |
+| ---------- | ---------------------------------- | ------------------------------------------------------------- |
+| MiniMax    | `minimax/MiniMax-M2.7`             | MiniMax M2.7                                                  |
+| GLM        | `glm/glm-5`                        | GLM 5                                                         |
+| GLM        | `glm/glm-5.1`                      | GLM 5.1                                                       |
+| GLM        | `glm/glm-5-turbo`                  | GLM 5 Turbo                                                   |
+| OpenAI     | `openai/gpt-5.5`                   | OpenAI GPT-5.5                                                |
+| OpenAI     | `openai/gpt-5.4`                   | OpenAI GPT-5.4                                                |
+| OpenAI     | `openai/gpt-5.4-mini`              | OpenAI GPT-5.4 Mini                                           |
+| OpenAI     | `openai/gpt-5.4-nano`              | OpenAI GPT-5.4 Nano                                           |
+| OpenAI     | `openai/gpt-5.3-chat-latest`       | OpenAI GPT-5.3 Chat                                           |
+| OpenAI     | `openai/gpt-5.2`                   | OpenAI GPT-5.2                                                |
+| OpenAI     | `openai/gpt-5.1`                   | OpenAI GPT-5.1                                                |
+| OpenAI     | `openai/gpt-5.1-codex`             | OpenAI GPT-5.1 Codex                                          |
+| OpenAI     | `openai/gpt-5.1-codex-mini`        | OpenAI GPT-5.1 Codex Mini                                     |
+| OpenAI     | `openai/gpt-5`                     | OpenAI GPT-5                                                  |
+| OpenAI     | `openai/gpt-5-mini`                | OpenAI GPT-5 Mini                                             |
+| OpenAI     | `openai/gpt-5-nano`                | OpenAI GPT-5 Nano                                             |
+| Nova       | `nova/nova-2-lite-v1`              | Amazon Nova 2 Lite                                            |
+| Nova       | `nova/nova-micro-v1`               | Amazon Nova Micro                                             |
+| Nova       | `nova/nova-lite-v1`                | Amazon Nova Lite                                              |
+| Nova       | `nova/nova-pro-v1`                 | Amazon Nova Pro                                               |
+| Nova       | `nova/nova-premier-v1`             | Amazon Nova Premier                                           |
+| Ollama     | `ollama/<model-name>`              | Discovered from `/api/tags` when Ollama is reachable          |
+| OpenRouter | `openrouter/<provider>/<model-id>` | Discovered from `/api/v1/models` when OpenRouter is reachable |
 
 > [!NOTE]
-> Ollama models are dynamic. If `NUXT_OLLAMA_BASE_URL` is not configured or Ollama is unreachable, the selector still shows the static MiniMax/GLM/Nova models.
+> Ollama and OpenRouter models are dynamic. If `NUXT_OLLAMA_BASE_URL`/`OPENROUTER_API_KEY` is not configured or the provider is unreachable, the selector still shows the static MiniMax/GLM/OpenAI/Nova models.
+> OCR-only runtime models are excluded from chat and document-processing selectors; OCR models remain available through the OCR-specific endpoints.
+> OpenAI models use the Responses API through the AI SDK adapter. Reasoning summaries are enabled for chat streaming on reasoning-capable GPT-5 models; GPT-5.3 Chat is streamed without reasoning options.
 > Nova extended reasoning is enabled with `high` effort only for `nova/nova-2-lite-v1`; other Nova models are called without `reasoning_effort`.
 
 ## Scripts
