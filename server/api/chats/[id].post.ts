@@ -18,6 +18,7 @@ import {
   resolveLanguageModel
 } from '../../utils/aiModels'
 import { getAIUserErrorMessage } from '../../utils/aiErrors'
+import { buildChatDocumentContext } from '../../utils/chatDocuments'
 
 defineRouteMeta({
   openAPI: {
@@ -75,24 +76,7 @@ export default defineEventHandler(async event => {
   // Retrieve the personality system prompt for this chat
   const personalityPrompt = await resolvePersonalityPrompt(chat.personality, userId)
 
-  let documentContext = ''
-  const chatDocumentId = (chat as unknown as { documentId: number | null }).documentId
-  if (chatDocumentId) {
-    const doc = await db.query.paperlessDocuments.findFirst({
-      where: () => eq(schema.paperlessDocuments.id, chatDocumentId)
-    })
-    if (doc) {
-      documentContext = `**DOCUMENT CONTEXT (reference material for this conversation):**
-Title: ${doc.title}
-${doc.correspondent ? `Correspondent: ${doc.correspondent}` : ''}
-${doc.documentType ? `Document Type: ${doc.documentType}` : ''}
-Content:
-${doc.aiContent || doc.ocrContent || 'No content available'}
----
-
-`
-    }
-  }
+  const documentContext = await buildChatDocumentContext(chat)
 
   // Auto-generate a title on the first message if none exists
   if (!chat.title) {

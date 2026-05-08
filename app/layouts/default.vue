@@ -65,7 +65,8 @@ const { data: chats, refresh: refreshChats } = await useFetch('/api/chats', {
       label: chat.title || 'Untitled',
       to: `/chat/${chat.id}`,
       icon: 'i-lucide-message-circle',
-      createdAt: chat.createdAt
+      createdAt: chat.createdAt,
+      documentCount: chat.documentCount ?? 0
     }))
 })
 
@@ -316,6 +317,14 @@ defineShortcuts({
                   >
                     {{ chat.label }}
                   </span>
+                  <span
+                    v-if="chat.documentCount"
+                    class="mt-0.5 inline-flex items-center gap-1 text-[11px] leading-none text-muted"
+                  >
+                    <UIcon name="i-lucide-files" class="size-3" />
+                    {{ chat.documentCount }}
+                    {{ chat.documentCount === 1 ? 'document' : 'documents' }}
+                  </span>
                 </NuxtLink>
 
                 <!-- Delete button: appears on hover with slide-in effect -->
@@ -370,7 +379,7 @@ defineShortcuts({
             />
           </UDropdownMenu>
 
-          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.4</span>
+          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.5</span>
         </div>
       </template>
     </UDashboardSidebar>

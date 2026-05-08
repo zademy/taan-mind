@@ -13,8 +13,8 @@
 const input = ref('')
 /** Whether a chat creation request is currently in progress */
 const loading = ref(false)
-/** Selected document ID for document-context chats (null = no document) */
-const selectedDocId = ref<number | null>(null)
+/** Selected document IDs for document-context chats */
+const selectedDocIds = ref<number[]>([])
 /** Template ref to the textarea element for auto-resize logic */
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const toast = useToast()
@@ -105,7 +105,7 @@ async function createChat(prompt: string) {
           parts: [{ type: 'text', text: trimmedPrompt }]
         },
         personality: personality.value,
-        ...(selectedDocId.value ? { documentId: selectedDocId.value } : {})
+        ...(selectedDocIds.value.length > 0 ? { documentIds: selectedDocIds.value } : {})
       }
     })
 
@@ -196,15 +196,18 @@ async function onSubmit(event?: Event) {
               <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                 <ModelSelect aria-label="Select AI model" />
                 <PersonalitySelect aria-label="Select AI personality" />
-                <DocumentSelect v-model="selectedDocId" aria-label="Select document context" />
+                <DocumentSelect v-model="selectedDocIds" aria-label="Select document contexts" />
                 <UBadge
-                  v-if="selectedDocId"
+                  v-if="selectedDocIds.length > 0"
                   color="primary"
                   variant="subtle"
-                  icon="i-lucide-file-check-2"
+                  icon="i-lucide-files"
                   class="max-w-full"
                 >
-                  <span class="truncate">Document #{{ selectedDocId }} selected</span>
+                  <span class="truncate">
+                    {{ selectedDocIds.length }}
+                    {{ selectedDocIds.length === 1 ? 'document' : 'documents' }} selected
+                  </span>
                 </UBadge>
               </div>
 

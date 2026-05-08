@@ -23,6 +23,11 @@ type ChatPageData = {
   visibility: 'public' | 'private'
   personality: string
   documentId: number | null
+  documentIds: number[]
+  documents: Array<{
+    id: number
+    title: string
+  }>
   createdAt: string | Date
   messages: Array<UIMessage & { createdAt?: string | Date }>
   isOwner: boolean
@@ -49,6 +54,17 @@ const { data, status } = await useFetch<ChatPageData>(() => `/api/chats/${chatId
 
 /** Whether the current user is the owner of this chat (controls edit/delete UI) */
 const isOwner = computed(() => data.value?.isOwner ?? false)
+
+/** Documents attached as chat-level reference context. */
+const chatDocuments = computed(() => data.value?.documents ?? [])
+
+/** Human-readable label for the document context badge. */
+const documentContextLabel = computed(() => {
+  const documents = chatDocuments.value
+  if (documents.length === 0) return 'No document context'
+  if (documents.length === 1) return `Document: ${documents[0]!.title}`
+  return `${documents.length} document contexts`
+})
 
 /** Reactive input field value for the message prompt */
 const input = ref('')
@@ -386,12 +402,13 @@ async function regenerateMessage(message: UIMessage) {
                 <ModelSelect aria-label="Select AI model" />
                 <PersonalitySelect aria-label="Select AI personality" />
                 <UBadge
-                  v-if="data?.documentId"
+                  v-if="chatDocuments.length > 0"
                   color="primary"
                   variant="subtle"
-                  icon="i-lucide-file-check-2"
+                  icon="i-lucide-files"
+                  class="max-w-full"
                 >
-                  Document context #{{ data.documentId }}
+                  <span class="truncate">{{ documentContextLabel }}</span>
                 </UBadge>
                 <UBadge v-else color="neutral" variant="subtle" icon="i-lucide-file-x-2">
                   No document context

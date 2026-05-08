@@ -1,6 +1,7 @@
 import { db, schema } from 'hub:db'
 import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { getChatDocumentSummaries } from '../../utils/chatDocuments'
 
 /**
  * GET /api/chats/:id
@@ -41,7 +42,15 @@ export default defineEventHandler(async event => {
     throw createError({ statusCode: 404, statusMessage: 'Chat not found' })
   }
 
+  const documents = await getChatDocumentSummaries(chat)
+
   // Exclude userId from the response for privacy
   const { userId: _, ...rest } = chat
-  return { ...rest, isOwner }
+  return {
+    ...rest,
+    documentId: chat.documentId ?? documents[0]?.id ?? null,
+    documentIds: documents.map(document => document.id),
+    documents,
+    isOwner
+  }
 })

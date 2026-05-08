@@ -2,6 +2,12 @@ import type { UIMessage } from 'ai'
 import { db, schema } from 'hub:db'
 import { z } from 'zod'
 import { and, eq } from 'drizzle-orm'
+import {
+  MAX_CHAT_DOCUMENTS,
+  assertChatDocumentsAvailable,
+  insertChatDocuments,
+  normalizeChatDocumentIds
+} from '../utils/chatDocuments'
 
 /**
  * POST /api/chats
@@ -14,7 +20,7 @@ import { and, eq } from 'drizzle-orm'
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)
-  const { id, message, personality, documentId } = await readValidatedBody(
+  const { id, message, personality, documentId, documentIds } = await readValidatedBody(
     event,
     z.object({
       /** Client-generated chat ID for idempotent creation. */
@@ -23,13 +29,21 @@ export default defineEventHandler(async event => {
       message: z.custom<UIMessage>(),
       /** Personality identifier (default or `custom:<uuid>`). */
       personality: z.string().default('friendly'),
-      /** Optional Paperless document ID to attach as context. */
-      documentId: z.number().nullable().optional()
+      /** Legacy optional Paperless document ID to attach as context. */
+      documentId: z.number().int().positive().nullable().optional(),
+      /** Optional Paperless document IDs to attach as chat-level context. */
+      documentIds: z
+        .array(z.number().int().positive())
+        .max(MAX_CHAT_DOCUMENTS)
+        .nullable()
+        .optional()
     }).parse
   )
 
   const messageId = message.id || crypto.randomUUID()
   const validatedPersonality = await assertPersonalityAvailable(personality, userId)
+  const normalizedDocumentIds = normalizeChatDocumentIds({ documentId, documentIds })
+  await assertChatDocumentsAvailable(normalizedDocumentIds)
 
   // Attempt to insert a new chat; ignore if it already exists
   const [insertedChat] = await db
@@ -39,7 +53,7 @@ export default defineEventHandler(async event => {
       title: '',
       userId,
       personality: validatedPersonality,
-      documentId: documentId ?? null
+      documentId: normalizedDocumentIds[0] ?? null
     })
     .onConflictDoNothing()
     .returning()
@@ -54,6 +68,8 @@ export default defineEventHandler(async event => {
   if (!chat) {
     throw createError({ statusCode: 403, statusMessage: 'Chat not found or access denied' })
   }
+
+  await insertChatDocuments(chat.id, normalizedDocumentIds)
 
   // Insert the first user message (ignore if already present)
   await db
