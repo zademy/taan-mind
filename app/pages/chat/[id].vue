@@ -97,17 +97,8 @@ function initChat() {
     },
     /** Handle streaming and API errors by showing a persistent toast notification */
     onError(error) {
-      let message = error.message
-      if (typeof message === 'string' && message[0] === '{') {
-        try {
-          message = JSON.parse(message).message || message
-        } catch {
-          // keep original message on malformed JSON
-        }
-      }
-
       toast.add({
-        description: message,
+        description: getChatErrorMessage(error),
         icon: 'i-lucide-alert-circle',
         color: 'error',
         duration: 0
@@ -120,6 +111,35 @@ function initChat() {
   // Auto-send first AI response for newly created chats
   if (shouldAutoSend) {
     nextTick(() => instance.sendMessage())
+  }
+}
+
+function getChatErrorMessage(error: Error): string {
+  const message = error.message || 'The selected AI provider returned an error.'
+  const parsedMessage = getParsedErrorMessage(message)
+  return parsedMessage || message
+}
+
+function getParsedErrorMessage(message: string): string | undefined {
+  if (!message.trim().startsWith('{')) {
+    return undefined
+  }
+
+  try {
+    const payload = JSON.parse(message) as {
+      message?: string
+      statusMessage?: string
+      data?: { message?: string; statusMessage?: string }
+    }
+
+    return (
+      payload.data?.message ||
+      payload.data?.statusMessage ||
+      payload.message ||
+      payload.statusMessage
+    )
+  } catch {
+    return undefined
   }
 }
 

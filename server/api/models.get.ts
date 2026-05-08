@@ -3,25 +3,30 @@ import type { ModelId, ModelOption, ModelsResponse } from '#shared/utils/models'
 import {
   DOCUMENT_PROCESSING_MODELS,
   MODELS,
-  isSelectableOllamaModelName
+  isSelectableOllamaModelName,
+  isSelectableOpenRouterModelName
 } from '#shared/utils/models'
 import { listOllamaModels } from '../utils/ollama'
+import { listOpenRouterModels, type OpenRouterModel } from '../utils/openrouter'
 
 /**
  * GET /api/models
  *
  * Lists selectable models. Chat scope includes all chat models, while
- * document-processing scope excludes chat-only providers such as Nova.
- * Ollama models are appended only when the configured Ollama instance is
- * reachable. OCR-only Ollama models are intentionally excluded from this list.
+ * document-processing scope excludes chat-only providers such as Nova. Runtime
+ * Ollama/OpenRouter models are appended only when their providers are reachable.
+ * OCR-only runtime models are intentionally excluded from this list.
  */
 export default defineEventHandler(async (event): Promise<ModelsResponse> => {
   const scope = getQuery(event).scope === 'document-processing' ? 'document-processing' : 'chat'
   const staticModels = scope === 'document-processing' ? DOCUMENT_PROCESSING_MODELS : MODELS
-  const ollamaModels = await getAvailableOllamaModelOptions(event)
+  const [ollamaModels, openRouterModels] = await Promise.all([
+    getAvailableOllamaModelOptions(event),
+    getAvailableOpenRouterModelOptions(event)
+  ])
 
   return {
-    models: [...staticModels, ...ollamaModels]
+    models: [...staticModels, ...ollamaModels, ...openRouterModels]
   }
 })
 
@@ -56,4 +61,49 @@ async function getAvailableOllamaModelOptions(event: H3Event): Promise<ModelOpti
   } catch {
     return []
   }
+}
+
+/**
+ * Converts available OpenRouter models into UI model options.
+ *
+ * OpenRouter is optional for chat/enrichment. If it is not configured or
+ * unreachable, the model list endpoint still succeeds with static providers.
+ * OCR-only OpenRouter models are excluded from chat and document processing.
+ *
+ * @param event - The H3 event used to access runtime configuration.
+ * @returns Runtime-discovered OpenRouter model options.
+ */
+async function getAvailableOpenRouterModelOptions(event: H3Event): Promise<ModelOption[]> {
+  try {
+    const models = await listOpenRouterModels(event)
+
+    return models
+      .filter(model => isSelectableOpenRouterModel(model))
+      .filter(
+        (model, index, candidates) =>
+          candidates.findIndex(candidate => candidate.id === model.id) === index
+      )
+      .sort((a, b) => getOpenRouterDisplayName(a).localeCompare(getOpenRouterDisplayName(b)))
+      .map(model => ({
+        label: `OpenRouter: ${getOpenRouterDisplayName(model)}`,
+        value: `openrouter/${model.id}` as ModelId,
+        icon: 'i-lucide-route',
+        provider: 'openrouter',
+        dynamic: true
+      }))
+  } catch {
+    return []
+  }
+}
+
+function isSelectableOpenRouterModel(model: OpenRouterModel): boolean {
+  return (
+    model.id.length > 0 &&
+    isSelectableOpenRouterModelName(model.id) &&
+    isSelectableOpenRouterModelName(model.name ?? '')
+  )
+}
+
+function getOpenRouterDisplayName(model: OpenRouterModel): string {
+  return model.name || model.id
 }

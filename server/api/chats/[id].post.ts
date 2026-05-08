@@ -11,12 +11,13 @@ import {
 import { db, schema } from 'hub:db'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { isSupportedModel } from '#shared/utils/models'
+import { isSelectableModel } from '#shared/utils/models'
 import {
   assertLanguageModelAvailable,
   getLanguageModelProviderOptions,
   resolveLanguageModel
 } from '../../utils/aiModels'
+import { getAIUserErrorMessage } from '../../utils/aiErrors'
 
 defineRouteMeta({
   openAPI: {
@@ -50,7 +51,7 @@ export default defineEventHandler(async event => {
     event,
     z.object({
       /** AI model identifier in `provider/modelId` format. */
-      model: z.string().refine(isSupportedModel, {
+      model: z.string().refine(isSelectableModel, {
         message: 'Invalid model'
       }),
       /** Array of UI messages in the conversation (including the new user message). */
@@ -95,16 +96,26 @@ ${doc.aiContent || doc.ocrContent || 'No content available'}
 
   // Auto-generate a title on the first message if none exists
   if (!chat.title) {
-    const { text: title } = await generateText({
-      model: resolveLanguageModel(model, event),
-      system: `You are a title generator for a chat:
+    let title = createFallbackChatTitle(messages[0])
+
+    try {
+      const { text } = await generateText({
+        model: resolveLanguageModel(model, event),
+        maxRetries: 0,
+        providerOptions: getLanguageModelProviderOptions(model),
+        system: `You are a title generator for a chat:
           - Generate a short title based on the first user's message
           - The title should be less than 30 characters long
           - The title should be a summary of the user's message
           - Do not use quotes (' or ") or colons (:) or any other punctuation
           - Do not use markdown, just plain text`,
-      prompt: JSON.stringify(messages[0])
-    })
+        prompt: JSON.stringify(messages[0])
+      })
+
+      title = normalizeChatTitle(text) || title
+    } catch (error) {
+      console.warn(`[Chat] Title generation failed: ${getAIUserErrorMessage(error)}`)
+    }
 
     await db
       .update(schema.chats)
@@ -131,12 +142,19 @@ ${doc.aiContent || doc.ocrContent || 'No content available'}
   event.node.req.on('close', () => abortController.abort())
 
   const stream = createUIMessageStream({
+    onError: error => {
+      const message = getAIUserErrorMessage(error)
+      console.warn(`[Chat] AI provider error: ${message}`)
+      return message
+    },
     execute: async ({ writer }) => {
       // Stream the AI response with tool support and reasoning
       const result = streamText({
         abortSignal: abortController.signal,
         model: resolveLanguageModel(model, event),
-        providerOptions: getLanguageModelProviderOptions(model),
+        providerOptions: getLanguageModelProviderOptions(model, {
+          openAIReasoningSummary: 'auto'
+        }),
         system: `${documentContext}${personalityPrompt}
 
 **CONTENT POLICY (MANDATORY):**
@@ -180,7 +198,8 @@ ${doc.aiContent || doc.ocrContent || 'No content available'}
       writer.merge(
         result.toUIMessageStream({
           sendSources: true,
-          sendReasoning: true
+          sendReasoning: true,
+          onError: getAIUserErrorMessage
         })
       )
     },
@@ -204,3 +223,24 @@ ${doc.aiContent || doc.ocrContent || 'No content available'}
     stream
   })
 })
+
+function createFallbackChatTitle(message?: UIMessage): string {
+  const text = getMessageText(message)
+  return normalizeChatTitle(text) || 'New chat'
+}
+
+function getMessageText(message?: UIMessage): string {
+  return (message?.parts ?? [])
+    .map(part => (part.type === 'text' && 'text' in part ? part.text : ''))
+    .filter(Boolean)
+    .join(' ')
+}
+
+function normalizeChatTitle(value: string): string {
+  return value
+    .replace(/[`*_~#"'’:：]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 30)
+    .trim()
+}

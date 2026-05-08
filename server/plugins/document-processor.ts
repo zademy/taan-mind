@@ -5,7 +5,7 @@ import type { PaperlessDocument } from '~~/shared/types/paperless'
 import type { ModelId } from '#shared/utils/models'
 import { cleanText } from '../utils/textCleaner'
 import type { LanguageModelRuntimeConfig } from '../utils/aiModels'
-import { resolveLanguageModelFromConfig } from '../utils/aiModels'
+import { getLanguageModelProviderOptions, resolveLanguageModelFromConfig } from '../utils/aiModels'
 import { getDocumentProcessingSettings } from '../utils/documentProcessingSettings'
 
 /** Configuration required for AI-powered document enrichment models. */
@@ -509,6 +509,7 @@ async function formatWithAI(
 ): Promise<string> {
   const { text } = await generateText({
     model: resolveLanguageModelFromConfig(enrichmentModel, config),
+    providerOptions: getLanguageModelProviderOptions(enrichmentModel),
     system: `You are a document text formatter. Your task is to clean and format OCR-extracted text from a document titled "${documentTitle}".
 
 Instructions:
@@ -550,6 +551,7 @@ async function extractMetadata(
 }> {
   const { text } = await generateText({
     model: resolveLanguageModelFromConfig(enrichmentModel, config),
+    providerOptions: getLanguageModelProviderOptions(enrichmentModel),
     system: `You are a document metadata extractor. Analyze the provided document content and return a JSON object with the following fields:
 
 - "suggestedTitle": un título claro y descriptivo en español que resuma el contenido del documento (ej: "Factura #1234 - Empresa XYZ - Enero 2025")
