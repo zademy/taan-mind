@@ -15,11 +15,27 @@ export interface UIChat {
  * Categorizes chats into "Today", "Yesterday", "Last week", "Last month",
  * and monthly groups (e.g. "January 2025") for older chats.
  *
+ * Grouping is deferred to client-only via `onMounted` to avoid hydration
+ * mismatches caused by timezone differences between server (UTC) and
+ * browser (local timezone) — e.g. a chat at 11pm local is "Today" on the
+ * client but "Yesterday" in UTC.
+ *
  * @param chats - Reactive reference to the list of chats to group.
  * @returns An object containing the computed `groups` array.
  */
 export function useChats(chats: Ref<UIChat[] | undefined>) {
+  /** Tracks whether the component has mounted on the client. */
+  const mounted = ref(false)
+
+  onMounted(() => {
+    mounted.value = true
+  })
+
   const groups = computed(() => {
+    // Skip grouping during SSR to prevent timezone-based hydration mismatches.
+    // Return an empty array on the server; the client will compute groups after mount.
+    if (!mounted.value) return []
+
     // Bucket definitions for date-based grouping
     const today: UIChat[] = []
     const yesterday: UIChat[] = []
@@ -49,9 +65,7 @@ export function useChats(chats: Ref<UIChat[] | undefined>) {
           year: 'numeric'
         })
 
-        if (!older[monthYear]) {
-          older[monthYear] = []
-        }
+        older[monthYear] ??= []
 
         older[monthYear].push(chat)
       }

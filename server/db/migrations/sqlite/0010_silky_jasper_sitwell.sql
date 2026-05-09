@@ -1,5 +1,3 @@
-ALTER TABLE `chats` ADD `document_id` integer;
---> statement-breakpoint
 CREATE TABLE `chat_documents` (
 	`chat_id` text NOT NULL,
 	`document_id` integer NOT NULL,
