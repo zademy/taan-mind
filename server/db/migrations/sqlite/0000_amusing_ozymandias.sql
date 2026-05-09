@@ -2,7 +2,8 @@ CREATE TABLE `chats` (
 	`id` text PRIMARY KEY NOT NULL,
 	`title` text,
 	`user_id` text NOT NULL,
-	`created_at` integer NOT NULL
+	`created_at` integer NOT NULL,
+	`document_id` integer
 );
 --> statement-breakpoint
 CREATE INDEX `chats_user_id_idx` ON `chats` (`user_id`);--> statement-breakpoint
