@@ -379,7 +379,7 @@ defineShortcuts({
             />
           </UDropdownMenu>
 
-          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.6</span>
+          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.7</span>
         </div>
       </template>
     </UDashboardSidebar>

@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the structure recommended by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates use ISO 8601 format: `YYYY-MM-DD`.
 
+## [1.0.7] - 2026-05-09
+
+### Added
+
+- Reference concept extraction system (`extractReferenceConcepts`) in `app/utils/ai.ts` that scores headings, bold terms, and multi-word/technical phrases from assistant markdown responses to suggest relevant web search links.
+- `ReferenceLinks.vue` component rendering compact "Learn more" chips below assistant messages, linking to privacy-friendly DuckDuckGo searches for detected concepts.
+- Bilingual (Spanish + English) stop-word and connector lists for concept extraction tuning.
+- Full JSDoc documentation and inline comments on all helpers in `app/utils/ai.ts`: `addReferenceCandidate`, `cleanReferenceLabel`, `stripMarkdownForReferences`, `removeEdgeStopWords`, `isUsefulReferenceLabel`, `getReferenceLabelBonus`, `normalizeReferenceKey`.
+- Comprehensive component-level documentation in `MessageContent.vue` with part-type/component dispatch table and key concept notes.
+- Comprehensive component-level documentation in `ReferenceLinks.vue` with props, data flow, and related files.
+
+### Changed
+
+- `MessageContent.vue` now renders `<ChatMessageReferenceLinks>` below assistant text parts for non-streaming messages.
+- Vite `logLevel` set to `error` in `nuxt.config.ts` to reduce development console noise.
+- Sidebar version label bumped to `v1.0.7`.
+
 ## [1.0.6] - 2026-05-08
 
 ### Fixed
