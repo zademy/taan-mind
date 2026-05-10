@@ -36,6 +36,7 @@
 - **AI Metadata Extraction** — Auto-suggest titles, tags, correspondents, and document types
 - **KPI Dashboard** — Document statistics with interactive charts (status, timeline, MIME type, document type)
 - **Document Context** — Inject [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) document content (OCR/AI-processed) as context into chats
+- **Read-only Chat Sharing** — Generate revocable live share links that expose a minimal no-sidebar transcript view
 - **AI Tools** — Chart generation, weather forecasts, and web search sources
 - **Anonymous Sessions** — No login required, HTTP-only session cookies with local SQLite storage
 - **Docker Ready** — Multi-stage Dockerfile with hardened runtime and integrated Paperless-ngx stack via Docker Compose
@@ -326,14 +327,16 @@ paperless-ui-chat/
 
 ## API Overview
 
-| Endpoint                   | Description                                                           |
-| -------------------------- | --------------------------------------------------------------------- |
-| `POST /api/chats/:id`      | AI streaming chat with document context and tool support              |
-| `GET /api/cache/documents` | Paginated cached documents with filters and sorting                   |
-| `GET /api/kpi/documents`   | Aggregated document statistics (status, MIME type, month, type)       |
-| `GET /api/health`          | Lightweight liveness check for container health                       |
-| `POST /api/ocr/extract`    | Extract text from uploaded files via Ollama + MuPDF                   |
-| `/api/paperless/*`         | Full Paperless-ngx CRUD proxy (documents, tags, correspondents, etc.) |
+| Endpoint                       | Description                                                           |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `POST /api/chats/:id`          | AI streaming chat with document context and tool support              |
+| `/api/chats/:id/share`         | Owner-only create/read/rotate/revoke controls for live share links    |
+| `GET /api/shared-chats/:token` | Public read-only shared chat transcript by opaque token               |
+| `GET /api/cache/documents`     | Paginated cached documents with filters and sorting                   |
+| `GET /api/kpi/documents`       | Aggregated document statistics (status, MIME type, month, type)       |
+| `GET /api/health`              | Lightweight liveness check for container health                       |
+| `POST /api/ocr/extract`        | Extract text from uploaded files via Ollama + MuPDF                   |
+| `/api/paperless/*`             | Full Paperless-ngx CRUD proxy (documents, tags, correspondents, etc.) |
 
 ## AI Models
 
@@ -397,4 +400,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 If Tata-Mind is useful to you, consider buying me a coffee!
 
-<a href="https://ko-fi.com/C0C01Y1SQI" target="_blank"><img height="26" src="https://img.shields.io/badge/Donate-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Donate with Ko-fi" /></a> <a href="https://buy.stripe.com/00wcN67J46kl8LY8GYfMA01" target="_blank"><img height="26" src="https://img.shields.io/badge/Donate-Stripe-635bff?style=for-the-badge&logo=stripe&logoColor=white" alt="Donate with Stripe" /></a>
+<a href="https://ko-fi.com/C0C01Y1SQI" target="_blank"><img height="26" src="https://img.shields.io/badge/Donate-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Donate with Ko-fi" /></a> <a href="https://buy.stripe.com/00wcN67J46kl8LY8GYfMA01" target="_blank"><img height="26" src="https://img.shields.io/badge/Donate-Stripe-635bff?style=for-the-badge&logo=stripe&logoColor=white" alt="Donate with Stripe" /></a> <a href="https://www.patreon.com/posts/taan-mind-open-157890170?utm_medium=clipboard_copy&utm_source=copyLink&utm_campaign=postshare_creator&utm_content=join_link" target="_blank"><img height="26" src="https://img.shields.io/badge/Support-Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Support on Patreon" /></a>
