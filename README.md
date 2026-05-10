@@ -22,6 +22,10 @@
   <img alt="nuxt-charts 2.1.4" src="https://img.shields.io/badge/nuxt--charts-2.1.4-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white"> <a href="https://deepwiki.com/zademy/taan-mind"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-Ask%20AI-5b21b6?style=for-the-badge&logo=googledocs&logoColor=white"></a>
 </p>
 
+<p align="center">
+  <a href="https://www.producthunt.com/products/taan-mind?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-taan-mind" target="_blank" rel="noopener noreferrer"><img alt="Taan Mind - Intelligent paperless workspace | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1143366&amp;theme=light&amp;t=1778385664273"></a>
+</p>
+
 ---
 
 ## Features

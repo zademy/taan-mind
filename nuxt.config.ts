@@ -74,6 +74,7 @@ export default defineNuxtConfig({
     build: {
       sourcemap: false
     },
+    logLevel: 'error',
     optimizeDeps: {
       include: ['striptags']
     }
