@@ -5,7 +5,7 @@
  * Paperless document cache), their relations, indexes, and shared column
  * helpers using Drizzle ORM's SQLite adapter.
  */
-import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 
 /**
@@ -60,10 +60,49 @@ export const messages = sqliteTable(
   table => [index('messages_chat_id_idx').on(table.chatId)]
 )
 
+/**
+ * Chat shares table — stores revocable public read-only links for chats.
+ * Tokens are opaque and separate from the internal chat ID.
+ */
+export const chatShares = sqliteTable(
+  'chat_shares',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    token: text('token').notNull(),
+    chatId: text('chat_id')
+      .notNull()
+      .references(() => chats.id, { onDelete: 'cascade' }),
+    ownerUserId: text('owner_user_id').notNull(),
+    mode: text('mode', { enum: ['live'] })
+      .notNull()
+      .default('live'),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }),
+    revokedAt: integer('revoked_at', { mode: 'timestamp' }),
+    ...timestamps
+  },
+  table => [
+    uniqueIndex('chat_shares_token_unique_idx').on(table.token),
+    uniqueIndex('chat_shares_chat_id_unique_idx').on(table.chatId),
+    index('chat_shares_owner_user_id_idx').on(table.ownerUserId),
+    index('chat_shares_active_idx').on(table.active)
+  ]
+)
+
 /** Defines the many-to-one relationship between a message and its chat. */
 export const messagesRelations = relations(messages, ({ one }) => ({
   chat: one(chats, {
     fields: [messages.chatId],
+    references: [chats.id]
+  })
+}))
+
+/** Defines the many-to-one relationship between a share link and its chat. */
+export const chatSharesRelations = relations(chatShares, ({ one }) => ({
+  chat: one(chats, {
+    fields: [chatShares.chatId],
     references: [chats.id]
   })
 }))
@@ -170,7 +209,8 @@ export const chatDocuments = sqliteTable(
 /** Defines the one-to-many relationships between a chat and its records. */
 export const chatsRelations = relations(chats, ({ many }) => ({
   messages: many(messages),
-  documents: many(chatDocuments)
+  documents: many(chatDocuments),
+  shares: many(chatShares)
 }))
 
 /** Defines the many-to-one relationships for chat document attachments. */

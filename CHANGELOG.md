@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the structure recommended by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates use ISO 8601 format: `YYYY-MM-DD`.
 
+## [1.0.8] - 2026-05-10
+
+### Added
+
+- Chat sharing system with revocable, token-based public read-only links (`chatShares` table, `server/utils/chatShares.ts`, `server/utils/shareTokens.ts`).
+- Share API endpoints: `GET/POST/PATCH/DELETE /api/chats/:id/share` (owner-scoped) and `GET /api/shared-chats/:token` (public read-only).
+- `ShareButton.vue` component for owner-only share controls: create, copy, rotate, and revoke share links via popover UI.
+- `Transcript.vue` reusable chat transcript renderer extracted from the chat page, with incremental history loading, configurable actions visibility, and `v-memo` optimization.
+- Public share page at `/share/chat/[token]` using a minimal layout (`share.vue`) without sidebar or owner controls.
+- Database migration 0011: `chat_shares` table with unique token index, cascade deletes, and owner/active indexes.
+- `ChatShare` type exported from `shared/types/db.d.ts`.
+- `no-store` cache and `noindex, nofollow` robots headers on the public shared-chat endpoint.
+
+### Changed
+
+- Chat page (`chat/[id].vue`) refactored to use `<ChatTranscript>` component, removing ~100 lines of inline message rendering logic.
+- `Navbar` now accepts a default slot for toolbar actions (share button).
+- Sidebar version label bumped to `v1.0.8`.
+
 ## [1.0.7] - 2026-05-09
 
 ### Added

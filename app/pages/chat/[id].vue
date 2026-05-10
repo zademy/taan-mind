@@ -69,9 +69,6 @@ const documentContextLabel = computed(() => {
 /** Reactive input field value for the message prompt */
 const input = ref('')
 
-/** Maximum number of messages rendered at once (increases with "show older" button) */
-const visibleMessageCount = ref(80)
-
 /** AI Chat instance (shallowRef to avoid deep reactivity overhead on the SDK object) */
 const chat = shallowRef<InstanceType<typeof Chat> | null>(null)
 
@@ -82,7 +79,6 @@ const chat = shallowRef<InstanceType<typeof Chat> | null>(null)
  */
 function initChat() {
   if (!data.value) return
-  visibleMessageCount.value = 80
 
   // Auto-send first AI response for newly created chats
   // Only on client-side, only if owner, and only when there's exactly 1 message
@@ -177,42 +173,6 @@ const latestMessageId = computed(
   () => chat.value?.messages[chat.value.messages.length - 1]?.id ?? null
 )
 
-/** Only render the most recent messages by default for very long conversations. */
-const visibleMessages = computed(() => {
-  const messages = chat.value?.messages ?? []
-  const start = Math.max(0, messages.length - visibleMessageCount.value)
-  return messages.slice(start)
-})
-
-/** Number of messages hidden above the current viewport window. */
-const hiddenMessageCount = computed(() =>
-  Math.max(0, (chat.value?.messages.length ?? 0) - visibleMessageCount.value)
-)
-
-/** Reveals older messages in batches without forcing all history to render at once. */
-function showOlderMessages() {
-  visibleMessageCount.value += 40
-}
-
-/** Small memo key for Vue render skipping on stable, non-streaming messages. */
-function getMessageMemoKey(message: UIMessage) {
-  if (message.id !== latestMessageId.value) {
-    return `${message.parts.length}:${message.role}`
-  }
-
-  return message.parts
-    .map(part => {
-      if ('text' in part && typeof part.text === 'string') {
-        return `${part.type}:${part.text.length}:${part.text.slice(-16)}`
-      }
-      if ('state' in part && typeof part.state === 'string') {
-        return `${part.type}:${part.state}`
-      }
-      return part.type
-    })
-    .join('|')
-}
-
 /** Computed flag indicating whether the user can submit a new message */
 const canSubmit = computed(() => input.value.trim().length > 0 && chat.value?.status === 'ready')
 
@@ -302,76 +262,28 @@ async function regenerateMessage(message: UIMessage) {
       :ui="{ body: 'p-0 sm:p-0 overscroll-none' }"
     >
       <template #header>
-        <Navbar />
+        <Navbar>
+          <ChatShareButton v-if="isOwner" :chat-id="data.id" />
+        </Navbar>
       </template>
 
       <template #body>
         <UContainer class="flex-1 flex flex-col gap-4 sm:gap-6 pb-4">
-          <!-- Chat messages list with auto-scrolling -->
-          <UChatMessages
+          <ChatTranscript
             v-if="chat"
-            should-auto-scroll
-            :messages="visibleMessages"
+            :messages="chat.messages"
             :status="chat.status"
+            :latest-message-id="latestMessageId"
+            :editing-message-id="isOwner ? editingMessageId : null"
+            :show-actions="isOwner"
             :spacing-offset="isOwner ? 160 : 0"
-            class="pt-(--ui-header-height) pb-4 sm:pb-6"
-          >
-            <template v-if="hiddenMessageCount > 0" #leading>
-              <div class="flex justify-center py-2">
-                <UButton
-                  color="neutral"
-                  variant="soft"
-                  size="sm"
-                  icon="i-lucide-history"
-                  :label="`Show ${Math.min(40, hiddenMessageCount)} older messages`"
-                  @click="showOlderMessages"
-                />
-              </div>
-            </template>
-
-            <!-- Custom streaming indicator with animated dots -->
-            <template #indicator>
-              <div class="flex items-center gap-2">
-                <ClientOnly>
-                  <ChatIndicator />
-                </ClientOnly>
-                <UChatShimmer text="Thinking..." class="text-sm" />
-              </div>
-            </template>
-
-            <!-- Message content with lightweight CSS animation -->
-            <template #content="{ message }">
-              <div
-                v-memo="[
-                  message.id,
-                  getMessageMemoKey(message),
-                  isOwner && editingMessageId === message.id
-                ]"
-                class="chat-message-enter"
-              >
-                <ChatMessageContent
-                  :message="message"
-                  :editing="isOwner && editingMessageId === message.id"
-                  @save="saveEdit"
-                  @cancel-edit="editingMessageId = null"
-                />
-              </div>
-            </template>
-
-            <!-- Message action buttons (copy, edit, regenerate) -->
-            <template v-if="isOwner" #actions="{ message }">
-              <ChatMessageActions
-                :message="message"
-                :streaming="
-                  chat?.status === 'streaming' &&
-                  message.id === chat?.messages[chat.messages.length - 1]?.id
-                "
-                :editing="editingMessageId === message.id"
-                @edit="startEdit"
-                @regenerate="regenerateMessage"
-              />
-            </template>
-          </UChatMessages>
+            :reset-key="data.id"
+            messages-class="pt-(--ui-header-height) pb-4 sm:pb-6"
+            @edit="startEdit"
+            @regenerate="regenerateMessage"
+            @save="saveEdit"
+            @cancel-edit="editingMessageId = null"
+          />
 
           <!-- Chat input prompt (only visible to the chat owner) -->
           <UChatPrompt
