@@ -9,6 +9,13 @@ export interface UIChat {
   documentCount?: number
 }
 
+/** Represents a group of sidebar chat entries for a date bucket. */
+export interface UIChatGroup {
+  id: string
+  label: string
+  items: Array<UIChat>
+}
+
 /**
  * Composable that groups chats by date for sidebar navigation.
  *
@@ -79,11 +86,7 @@ export function useChats(chats: Ref<UIChat[] | undefined>) {
     })
 
     // Build the final ordered list of non-empty groups
-    const formattedGroups = [] as Array<{
-      id: string
-      label: string
-      items: Array<UIChat>
-    }>
+    const formattedGroups = [] as UIChatGroup[]
 
     // Add groups that have chats
     if (today.length) {

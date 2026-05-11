@@ -1,48 +1,94 @@
 <!--
   default.vue - Default application layout
-  Provides the main layout structure with:
-  - A collapsible/resizable sidebar containing navigation links, a grouped chat list
-    with avatar colors, delete confirmation, and incremental chat loading.
-  - A main content area rendered as a glassmorphism card.
-  - Keyboard shortcuts for quick navigation.
-  - Lazy-loaded modals for settings and delete confirmation.
+  Provides the main dashboard shell with a collapsible sidebar, standalone chat
+  history, Taanwork project navigation, and the main content card.
 -->
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
-import { LazyModalConfirm, LazySettingsPersonalitiesModal } from '#components'
+import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
+import {
+  LazyModalConfirm,
+  LazyProjectsCreateModal,
+  LazySettingsPersonalitiesModal
+} from '#components'
+
+/** Sidebar navigation mode — persisted as a cookie so it survives page reloads */
+type SidebarMode = 'chats' | 'taanwork'
+
+/** API response shape when creating a new project */
+type ProjectCreateResult = {
+  project: { id: string; name: string }
+  chat: { id: string }
+}
+
+/** API response shape when deleting a project */
+type ProjectDeleteResult = {
+  project: { id: string; name: string }
+  deletedChatCount: number
+  activeChatDeleted: boolean
+}
+
+/** Project shape used in the sidebar, including recent chat previews */
+type SidebarProject = {
+  id: string
+  name: string
+  createdAt: string | Date
+  chatCount: number
+  latestChatCreatedAt: string | Date | null
+  recentChats: Array<{
+    id: string
+    title: string | null
+    createdAt: string | Date
+    documentCount: number
+  }>
+}
 
 const route = useRoute()
 const toast = useToast()
 const overlay = useOverlay()
-/** CSRF token utilities for securing mutating API requests */
 const { csrf, headerName } = useCsrf()
+const { personality } = usePersonality()
 
-/** Controls the sidebar open/close state on mobile */
+/** Controls the sidebar open/close state on mobile. */
 const open = ref(false)
 
-/** Number of recent chats rendered initially in the sidebar */
+/** Sidebar mode is persisted so users can stay in Chat or Taanwork mode. */
+const sidebarMode = useCookie<SidebarMode>('sidebar-mode', {
+  default: () => 'chats'
+})
+
+const sidebarTabs: TabsItem[] = [
+  { label: 'Chats', icon: 'i-lucide-messages-square', value: 'chats' },
+  { label: 'Taanwork', icon: 'i-lucide-folder-kanban', value: 'taanwork' }
+]
+
+/** Number of recent chats rendered initially in the sidebar. */
 const INITIAL_VISIBLE_CHATS = 40
-/** Number of older chats appended when the user requests more */
+/** Number of older chats appended when the user requests more. */
 const CHAT_LOAD_INCREMENT = 40
 
-/** Lazy-loaded confirmation modal for chat deletion with pre-configured props */
 const deleteModal = overlay.create(LazyModalConfirm, {
   props: {
     title: 'Delete chat',
     description: 'Are you sure you want to delete this chat? This cannot be undone.'
   }
 })
-
-/** Lazy-loaded settings modal for personalization and document processing */
+const deleteProjectModal = overlay.create(LazyModalConfirm, {
+  props: {
+    title: 'Delete project',
+    description:
+      'This will permanently delete the project and all related chats. This cannot be undone.',
+    confirmLabel: 'Delete project'
+  }
+})
 const settingsModal = overlay.create(LazySettingsPersonalitiesModal)
+const createProjectModal = overlay.create(LazyProjectsCreateModal)
 
-/** Opens the settings modal and closes the mobile sidebar */
+/** Opens the administration settings modal and closes the mobile sidebar */
 function openSettings() {
   open.value = false
   settingsModal.open()
 }
 
-/** Sidebar settings dropdown menu items */
 const settingsItems: DropdownMenuItem[][] = [
   [
     {
@@ -53,10 +99,12 @@ const settingsItems: DropdownMenuItem[][] = [
   ]
 ]
 
-/**
- * Fetch all chats from the API and transform them into sidebar-compatible items.
- * Each item includes an id, label, route, icon, and creation date.
- */
+/** Extracts the active chat ID from the current route params */
+const activeChatId = computed(() => {
+  const id = route.params.id
+  return typeof id === 'string' ? id : undefined
+})
+
 const { data: chats, refresh: refreshChats } = await useFetch('/api/chats', {
   key: 'chats',
   transform: data =>
@@ -70,39 +118,40 @@ const { data: chats, refresh: refreshChats } = await useFetch('/api/chats', {
     }))
 })
 
-/** Incremental sidebar render limit; keeps long histories cheap to hydrate */
+const { data: projects, refresh: refreshProjects } = await useFetch<SidebarProject[]>(
+  '/api/projects',
+  {
+    key: 'projects',
+    default: () => []
+  }
+)
+
 const visibleChatLimit = ref(INITIAL_VISIBLE_CHATS)
-
-/** Total number of chats available in the sidebar payload */
+const creatingChatProjectId = ref<string | null>(null)
+const deletingProjectId = ref<string | null>(null)
 const totalChats = computed(() => chats.value?.length ?? 0)
-
-/** Whether the user has any chats at all */
 const hasChats = computed(() => totalChats.value > 0)
-
-/** Index of the current route chat, if it exists in the loaded sidebar payload */
 const activeChatIndex = computed(() => {
-  const activeChatId = route.params.id
-  if (typeof activeChatId !== 'string') return -1
-  return chats.value?.findIndex(chat => chat.id === activeChatId) ?? -1
+  if (!activeChatId.value) return -1
+  return chats.value?.findIndex(chat => chat.id === activeChatId.value) ?? -1
 })
-
-/**
- * Effective limit used for rendering.
- * It keeps the active chat visible even when opening an older chat directly.
- */
 const effectiveChatLimit = computed(() => {
   const activeLimit = activeChatIndex.value >= 0 ? activeChatIndex.value + 1 : 0
-
   return Math.min(totalChats.value, Math.max(visibleChatLimit.value, activeLimit))
 })
-
-/** Chats currently rendered in the sidebar, newest first */
 const visibleChats = computed(() => chats.value?.slice(0, effectiveChatLimit.value))
-
-/** Remaining older chats hidden behind the incremental "show more" action */
 const hiddenChatCount = computed(() => Math.max(totalChats.value - effectiveChatLimit.value, 0))
+const { groups } = useChats(visibleChats)
 
-/** Reveals the next batch of older chats in the sidebar */
+watchEffect(() => {
+  if (!activeChatId.value) return
+  const activeProject = projects.value?.some(project =>
+    project.recentChats.some(chat => chat.id === activeChatId.value)
+  )
+  if (activeProject) sidebarMode.value = 'taanwork'
+})
+
+/** Increases the visible chat limit by the configured increment */
 function showMoreChats() {
   visibleChatLimit.value = Math.min(
     totalChats.value,
@@ -110,50 +159,89 @@ function showMoreChats() {
   )
 }
 
-/** Group the visible chats by time period (e.g., Today, Yesterday, Last 7 days) */
-const { groups } = useChats(visibleChats)
+/** Refreshes both chat and project data in the sidebar simultaneously */
+async function refreshSidebarData() {
+  await Promise.all([refreshChats(), refreshProjects()])
+  refreshNuxtData('chats')
+  refreshNuxtData('projects')
+}
 
 /**
- * Generates a consistent Tailwind background color class from a string hash.
- * Used to assign unique avatar colors to each chat.
+ * Opens the project creation modal and, on confirmation,
+ * creates the project via the API and navigates to its starter chat.
  */
-function stringToColor(str: string): string {
-  const colors = [
-    'bg-blue-500',
-    'bg-violet-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-cyan-500',
-    'bg-fuchsia-500',
-    'bg-lime-500',
-    'bg-orange-500',
-    'bg-pink-500',
-    'bg-purple-500',
-    'bg-teal-500'
-  ]
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+async function openCreateProject() {
+  open.value = false
+  const instance = createProjectModal.open()
+  const result = (await instance.result) as false | { name: string }
+  if (!result) return
+
+  await createProject(result.name)
+}
+
+/**
+ * Creates a new project with the given name and navigates to its starter chat.
+ * Shows a toast on failure.
+ * @param name - The project name entered by the user
+ */
+async function createProject(name: string) {
+  try {
+    const result = await $fetch<ProjectCreateResult>('/api/projects', {
+      method: 'POST',
+      headers: { [headerName]: csrf },
+      body: {
+        name,
+        personality: personality.value
+      }
+    })
+
+    sidebarMode.value = 'taanwork'
+    await refreshSidebarData()
+    await navigateTo(`/chat/${result.chat.id}`)
+  } catch (error) {
+    toast.add({
+      description: getRequestErrorMessage(error, 'Failed to create project.'),
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    })
   }
-  return colors[Math.abs(hash) % colors.length]!
 }
 
 /**
- * Extracts initials from a chat title for the avatar.
- * Returns '?' for untitled chats, first letter for single words,
- * or first two letters for multi-word titles.
+ * Creates a new chat within an existing project and navigates to it.
+ * Prevents duplicate creation requests via the creatingChatProjectId guard.
+ * @param projectId - The UUID of the target project
  */
-function getInitials(title: string): string {
-  if (title === 'Untitled') return '?'
-  const words = title.split(' ').filter(w => w.length > 0)
-  if (words.length === 1) return words[0]!.charAt(0).toUpperCase()
-  return (words[0]!.charAt(0) + words[1]!.charAt(0)).toUpperCase()
+async function createProjectChat(projectId: string) {
+  if (creatingChatProjectId.value) return
+  creatingChatProjectId.value = projectId
+
+  try {
+    const result = await $fetch<ProjectCreateResult>(`/api/projects/${projectId}/chats`, {
+      method: 'POST',
+      headers: { [headerName]: csrf },
+      body: { personality: personality.value }
+    })
+
+    sidebarMode.value = 'taanwork'
+    open.value = false
+    await refreshSidebarData()
+    await navigateTo(`/chat/${result.chat.id}`)
+  } catch (error) {
+    toast.add({
+      description: getRequestErrorMessage(error, 'Failed to create project chat.'),
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    })
+  } finally {
+    creatingChatProjectId.value = null
+  }
 }
 
 /**
- * Deletes a chat after user confirmation via modal.
- * Refreshes the chat list and navigates to home if the deleted chat was active.
+ * Deletes a chat after user confirmation and refreshes the sidebar.
+ * Navigates to the home page if the deleted chat was active.
+ * @param id - The UUID of the chat to delete
  */
 async function deleteChat(id: string) {
   const instance = deleteModal.open()
@@ -171,15 +259,73 @@ async function deleteChat(id: string) {
     icon: 'i-lucide-trash'
   })
 
-  await refreshChats()
+  await refreshSidebarData()
 
-  // Navigate to home if the user deleted the currently active chat
   if (route.params.id === id) {
     await navigateTo('/')
   }
 }
 
-/** Keyboard shortcut: press 'c' to create a new chat */
+/**
+ * Deletes a project and all its related chats after user confirmation.
+ * Navigates to the home page if the currently active chat belonged to the project.
+ * @param projectId - The UUID of the project to delete
+ */
+async function deleteProject(projectId: string) {
+  if (deletingProjectId.value) return
+
+  const instance = deleteProjectModal.open()
+  const confirmed = await instance.result
+  if (!confirmed) return
+
+  deletingProjectId.value = projectId
+
+  try {
+    const result = await $fetch<ProjectDeleteResult>(`/api/projects/${projectId}`, {
+      method: 'DELETE',
+      headers: { [headerName]: csrf },
+      query: activeChatId.value ? { activeChatId: activeChatId.value } : undefined
+    })
+
+    toast.add({
+      title: 'Project deleted',
+      description: `${result.project.name} and ${result.deletedChatCount} related ${result.deletedChatCount === 1 ? 'chat' : 'chats'} were deleted.`,
+      icon: 'i-lucide-trash-2'
+    })
+
+    await refreshSidebarData()
+
+    if (result.activeChatDeleted) {
+      await navigateTo('/')
+    }
+  } catch (error) {
+    toast.add({
+      description: getRequestErrorMessage(error, 'Failed to delete project.'),
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    })
+  } finally {
+    deletingProjectId.value = null
+  }
+}
+
+/**
+ * Extracts a human-readable error message from an API error response.
+ * Checks nested data.message, data.statusMessage, and top-level message before falling back.
+ * @param error - The unknown error thrown by $fetch
+ * @param fallback - Default message if no structured message is found
+ */
+function getRequestErrorMessage(error: unknown, fallback: string) {
+  return (
+    (error as { data?: { message?: string; statusMessage?: string }; message?: string }).data
+      ?.message ||
+    (error as { data?: { message?: string; statusMessage?: string }; message?: string }).data
+      ?.statusMessage ||
+    (error as { message?: string }).message ||
+    fallback
+  )
+}
+
 defineShortcuts({
   c: () => {
     navigateTo('/')
@@ -188,9 +334,7 @@ defineShortcuts({
 </script>
 
 <template>
-  <!-- Dashboard group with rem-based sizing -->
   <UDashboardGroup unit="rem">
-    <!-- Collapsible and resizable sidebar with chat list -->
     <UDashboardSidebar
       id="default"
       v-model:open="open"
@@ -199,7 +343,6 @@ defineShortcuts({
       resizable
       class="border-r-0 py-4"
     >
-      <!-- Sidebar header: logo and app name, collapses gracefully -->
       <template #header="{ collapsed }">
         <NuxtLink
           to="/"
@@ -222,10 +365,8 @@ defineShortcuts({
         </NuxtLink>
       </template>
 
-      <!-- Sidebar body: new chat button and grouped chat list -->
       <template #default="{ collapsed }">
-        <!-- Documents link and New chat button -->
-        <div class="flex flex-col gap-1 mt-6">
+        <div class="mt-6 flex flex-col gap-2">
           <UButton
             icon="i-lucide-file-text"
             :label="collapsed ? undefined : 'Documents'"
@@ -240,7 +381,38 @@ defineShortcuts({
             ]"
             @click="open = false"
           />
+
+          <UTabs
+            v-if="!collapsed"
+            v-model="sidebarMode"
+            :items="sidebarTabs"
+            :content="false"
+            color="neutral"
+            variant="pill"
+            size="sm"
+            class="w-full px-1"
+            :ui="{ list: 'w-full', trigger: 'flex-1 justify-center' }"
+          />
+
+          <div v-else class="flex flex-col gap-1">
+            <UButton
+              icon="i-lucide-messages-square"
+              :variant="sidebarMode === 'chats' ? 'soft' : 'ghost'"
+              block
+              aria-label="Chats"
+              @click="sidebarMode = 'chats'"
+            />
+            <UButton
+              icon="i-lucide-folder-kanban"
+              :variant="sidebarMode === 'taanwork' ? 'soft' : 'ghost'"
+              block
+              aria-label="Taanwork"
+              @click="sidebarMode = 'taanwork'"
+            />
+          </div>
+
           <UButton
+            v-if="sidebarMode === 'chats'"
             icon="i-lucide-plus"
             :label="collapsed ? undefined : 'New chat'"
             :variant="route.path === '/' ? 'soft' : 'ghost'"
@@ -254,113 +426,51 @@ defineShortcuts({
             ]"
             @click="open = false"
           />
-        </div>
-
-        <!-- Grouped chat list (hidden when sidebar is collapsed) -->
-        <div v-if="!collapsed" class="mt-4 flex flex-col gap-4 overflow-y-auto scrollbar-hide">
-          <!-- Empty state when there are no chats yet -->
-          <div
-            v-if="!hasChats"
-            class="mx-2 rounded-2xl border border-dashed border-default/80 bg-elevated/40 px-4 py-6 text-center"
-          >
-            <div
-              class="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
-            >
-              <UIcon name="i-lucide-message-circle-plus" class="size-5" />
-            </div>
-            <p class="text-sm font-medium text-highlighted">No chats yet</p>
-            <p class="mt-1 text-xs leading-5 text-muted">
-              Start a new conversation and it will appear here.
-            </p>
-          </div>
-
-          <div v-for="group in groups" :key="group.id" class="flex flex-col gap-1.5">
-            <!-- Group label (e.g., "Today", "Yesterday") -->
-            <p class="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
-              {{ group.label }}
-            </p>
-
-            <!-- Chat items within the group -->
-            <div class="flex flex-col gap-0.5">
-              <div
-                v-for="chat in group.items"
-                :key="chat.id"
-                class="group/chat relative flex items-center gap-2.5 rounded-xl px-2 py-2 transition-all duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
-                :class="
-                  route.params.id === chat.id
-                    ? 'bg-primary/10 dark:bg-primary/20 ring-1 ring-primary/20'
-                    : ''
-                "
-              >
-                <!-- Avatar with consistent gradient background based on chat ID -->
-                <div
-                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white shadow-sm"
-                  :class="stringToColor(chat.id)"
-                >
-                  {{ getInitials(chat.label) }}
-                </div>
-
-                <!-- Chat title link -->
-                <NuxtLink
-                  :to="`/chat/${chat.id}`"
-                  class="min-w-0 flex-1 pr-6"
-                  @click="open = false"
-                >
-                  <span
-                    class="block truncate text-sm transition-colors duration-200"
-                    :class="[
-                      chat.label === 'Untitled'
-                        ? 'text-muted'
-                        : 'text-default group-hover/chat:text-highlighted',
-                      route.params.id === chat.id && 'font-medium'
-                    ]"
-                  >
-                    {{ chat.label }}
-                  </span>
-                  <span
-                    v-if="chat.documentCount"
-                    class="mt-0.5 inline-flex items-center gap-1 text-[11px] leading-none text-muted"
-                  >
-                    <UIcon name="i-lucide-files" class="size-3" />
-                    {{ chat.documentCount }}
-                    {{ chat.documentCount === 1 ? 'document' : 'documents' }}
-                  </span>
-                </NuxtLink>
-
-                <!-- Delete button: appears on hover with slide-in effect -->
-                <div class="absolute right-2">
-                  <UButton
-                    icon="i-lucide-x"
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    class="opacity-0 transition-all duration-200 text-muted hover:text-error hover:bg-error/10 focus:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-error/30 group-hover/chat:opacity-100 group-focus-within/chat:opacity-100 p-1"
-                    aria-label="Delete chat"
-                    @click.stop.prevent="deleteChat(chat.id)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
 
           <UButton
-            v-if="hiddenChatCount > 0"
-            color="neutral"
+            v-else
+            icon="i-lucide-folder-plus"
+            :label="collapsed ? undefined : 'New project'"
             variant="ghost"
-            size="xs"
             block
-            icon="i-lucide-chevron-down"
-            :label="`Show ${Math.min(CHAT_LOAD_INCREMENT, hiddenChatCount)} older chats`"
-            class="mx-2 justify-center text-muted"
-            @click="showMoreChats"
+            :class="[
+              'transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]',
+              !collapsed && 'justify-start'
+            ]"
+            @click="openCreateProject"
+          />
+        </div>
+
+        <div v-if="!collapsed" class="mt-4 min-h-0 flex-1 overflow-hidden">
+          <SidebarChatList
+            v-if="sidebarMode === 'chats'"
+            :groups="groups"
+            :active-chat-id="activeChatId"
+            :has-chats="hasChats"
+            :hidden-chat-count="hiddenChatCount"
+            :load-increment="CHAT_LOAD_INCREMENT"
+            @delete="deleteChat"
+            @show-more="showMoreChats"
+            @select="open = false"
+          />
+
+          <SidebarProjectList
+            v-else
+            :projects="projects ?? []"
+            :active-chat-id="activeChatId"
+            :creating-chat-project-id="creatingChatProjectId"
+            :deleting-project-id="deletingProjectId"
+            @create-project="openCreateProject"
+            @create-chat="createProjectChat"
+            @delete="deleteChat"
+            @delete-project="deleteProject"
+            @select="open = false"
           />
         </div>
       </template>
 
-      <!-- Settings section in the sidebar footer -->
       <template #footer="{ collapsed }">
         <div class="flex w-full flex-col gap-2 px-2">
-          <!-- Settings dropdown menu -->
           <UDropdownMenu
             :items="settingsItems"
             :content="{ side: 'top', align: 'start', sideOffset: 8 }"
@@ -379,12 +489,11 @@ defineShortcuts({
             />
           </UDropdownMenu>
 
-          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.8</span>
+          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.9</span>
         </div>
       </template>
     </UDashboardSidebar>
 
-    <!-- Main content area with rounded card styling and glassmorphism effect -->
     <div
       class="flex-1 flex m-4 lg:ml-0 rounded-2xl ring ring-default/50 bg-default/50 shadow-xl backdrop-blur-sm min-w-0 min-h-0 overflow-clip"
     >
@@ -392,14 +501,3 @@ defineShortcuts({
     </div>
   </UDashboardGroup>
 </template>
-
-<style scoped>
-/* Hide scrollbar but preserve scrolling functionality */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

@@ -12,25 +12,40 @@
 import { Chat } from '@ai-sdk/vue'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
+import type { ChatUsage } from '~/utils/chatActivity'
 
 /**
  * Shape of the chat page data returned by the API.
- * Includes metadata, messages, and ownership information.
+ * Includes metadata, messages, ownership info, project details, and document context.
  */
 type ChatPageData = {
   id: string
   title: string | null
   visibility: 'public' | 'private'
   personality: string
+  projectId: string | null
+  project: {
+    id: string
+    name: string
+  } | null
   documentId: number | null
   documentIds: number[]
-  documents: Array<{
-    id: number
-    title: string
+  documents: ChatDocumentSummary[]
+  recentProjectChats: Array<{
+    id: string
+    title: string | null
+    createdAt: string | Date
+    documentCount: number
   }>
   createdAt: string | Date
   messages: Array<UIMessage & { createdAt?: string | Date }>
   isOwner: boolean
+}
+
+/** Summary of a document attached as context to the chat */
+type ChatDocumentSummary = {
+  id: number
+  title: string
 }
 
 const route = useRoute()
@@ -40,7 +55,7 @@ const { model } = useModels()
 /** CSRF token utilities for securing mutating API requests */
 const { csrf, headerName } = useCsrf()
 
-/** Reactive chat ID extracted from the route params */
+/** Reactive chat ID extracted from the current route params */
 const chatId = computed(() => route.params.id as string)
 
 /**
@@ -48,7 +63,11 @@ const chatId = computed(() => route.params.id as string)
  * useFetch forwards cookies during SSR for private chats.
  * Key is dynamic so it re-fetches when navigating between chats.
  */
-const { data, status } = await useFetch<ChatPageData>(() => `/api/chats/${chatId.value}`, {
+const {
+  data,
+  status,
+  refresh: refreshChat
+} = await useFetch<ChatPageData>(() => `/api/chats/${chatId.value}`, {
   key: () => `chat-${chatId.value}`
 })
 
@@ -56,7 +75,14 @@ const { data, status } = await useFetch<ChatPageData>(() => `/api/chats/${chatId
 const isOwner = computed(() => data.value?.isOwner ?? false)
 
 /** Documents attached as chat-level reference context. */
-const chatDocuments = computed(() => data.value?.documents ?? [])
+const selectedDocIds = ref<number[]>([])
+const selectedDocuments = ref<ChatDocumentSummary[]>([])
+const syncingDocuments = ref(false)
+const lastUsage = ref<ChatUsage | null>(null)
+
+const chatDocuments = computed(() => selectedDocuments.value)
+const project = computed(() => data.value?.project ?? null)
+const recentProjectChats = computed(() => data.value?.recentProjectChats ?? [])
 
 /** Human-readable label for the document context badge. */
 const documentContextLabel = computed(() => {
@@ -98,6 +124,9 @@ function initChat() {
       body: {
         get model() {
           return model.value
+        },
+        get documentIds() {
+          return project.value ? selectedDocIds.value : undefined
         }
       }
     }),
@@ -105,7 +134,15 @@ function initChat() {
     onData: dataPart => {
       if (dataPart.type === 'data-chat-title') {
         refreshNuxtData('chats')
+        refreshNuxtData('projects')
       }
+
+      if (dataPart.type === 'data-chat-usage') {
+        lastUsage.value = getChatUsage(dataPart.data)
+      }
+    },
+    onFinish: () => {
+      refreshNuxtData('projects')
     },
     /** Handle streaming and API errors by showing a persistent toast notification */
     onError(error) {
@@ -165,6 +202,31 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => data.value?.id,
+  () => {
+    selectedDocIds.value = data.value?.documentIds ?? []
+    selectedDocuments.value = data.value?.documents ?? []
+    lastUsage.value = null
+  },
+  { immediate: true }
+)
+
+watch(
+  selectedDocIds,
+  ids => {
+    selectedDocuments.value = ids.map(
+      id =>
+        selectedDocuments.value.find(document => document.id === id) ??
+        data.value?.documents.find(document => document.id === id) ?? {
+          id,
+          title: `Document #${id}`
+        }
+    )
+  },
+  { deep: true }
+)
+
 /**
  * Latest message ID used to identify which message is actively streaming.
  * This drives reactivity for the streaming message's rendering.
@@ -185,8 +247,54 @@ async function handleSubmit(e?: Event) {
   const text = input.value.trim()
   if (!text || chat.value?.status !== 'ready') return
 
+  await syncDocumentContext()
+  lastUsage.value = null
   chat.value.sendMessage({ text })
   input.value = ''
+}
+
+async function syncDocumentContext() {
+  if (!data.value || !isOwner.value) return
+  if (arraysEqual(selectedDocIds.value, data.value.documentIds)) return
+
+  syncingDocuments.value = true
+  try {
+    const documents = await $fetch<ChatDocumentSummary[]>(`/api/chats/${data.value.id}/documents`, {
+      method: 'PATCH',
+      headers: { [headerName]: csrf },
+      body: { documentIds: selectedDocIds.value }
+    })
+
+    data.value.documentIds = documents.map(document => document.id)
+    data.value.documents = documents
+    selectedDocuments.value = documents
+    await refreshChat()
+  } catch (error) {
+    const description =
+      (error as { data?: { message?: string }; message?: string }).data?.message ||
+      (error as { message?: string }).message ||
+      'Failed to update document context.'
+
+    toast.add({
+      description,
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    })
+    throw error
+  } finally {
+    syncingDocuments.value = false
+  }
+}
+
+function arraysEqual(a: number[], b: number[]) {
+  return a.length === b.length && a.every((value, index) => value === b[index])
+}
+
+function getChatUsage(data: unknown): ChatUsage | null {
+  const usage = (data as { usage?: ChatUsage } | undefined)?.usage
+  if (!usage) return null
+
+  return usage
 }
 
 /** Tracks which message is currently being edited (null = none) */
@@ -258,7 +366,7 @@ async function regenerateMessage(message: UIMessage) {
     <UDashboardPanel
       v-if="data?.id"
       id="chat"
-      class="relative min-h-0"
+      class="relative min-h-0 flex-1"
       :ui="{ body: 'p-0 sm:p-0 overscroll-none' }"
     >
       <template #header>
@@ -284,6 +392,8 @@ async function regenerateMessage(message: UIMessage) {
             @save="saveEdit"
             @cancel-edit="editingMessageId = null"
           />
+
+          <ProjectsRecentChats v-if="project" :project="project" :chats="recentProjectChats" />
 
           <!-- Chat input prompt (only visible to the chat owner) -->
           <UChatPrompt
@@ -313,6 +423,13 @@ async function regenerateMessage(message: UIMessage) {
               <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                 <ModelSelect aria-label="Select AI model" />
                 <PersonalitySelect aria-label="Select AI personality" />
+                <DocumentSelect
+                  v-if="project"
+                  v-model="selectedDocIds"
+                  aria-label="Select project document contexts"
+                  :disabled="syncingDocuments || chat.status !== 'ready'"
+                  @selected-documents="selectedDocuments = $event"
+                />
                 <UBadge
                   v-if="chatDocuments.length > 0"
                   color="primary"
@@ -331,6 +448,17 @@ async function regenerateMessage(message: UIMessage) {
         </UContainer>
       </template>
     </UDashboardPanel>
+
+    <ChatActivityPanel
+      v-if="data?.id && chat"
+      class="hidden xl:flex"
+      :status="chat.status"
+      :messages="chat.messages"
+      :model="model"
+      :usage="lastUsage"
+      :project="project"
+      :documents="chatDocuments"
+    />
 
     <!-- Error state: only when fetch genuinely failed or returned empty -->
     <UContainer

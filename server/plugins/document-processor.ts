@@ -1,3 +1,16 @@
+/**
+ * @file Nitro plugin — AI-powered Paperless document processor.
+ *
+ * Runs a background interval that picks up unprocessed Paperless-ngx documents
+ * one at a time and enriches them with OCR, AI formatting, and metadata
+ * extraction. Processed metadata (title, correspondent, document type, tags,
+ * archive serial number) is written back to Paperless-ngx only when the
+ * existing fields are empty — the plugin never overwrites user-set values.
+ *
+ * The processor starts after the first HTTP request and stops cleanly when
+ * the Nitro server shuts down.
+ */
+
 import { eq, asc, or } from 'drizzle-orm'
 import { consola } from 'consola'
 import { generateText } from 'ai'
