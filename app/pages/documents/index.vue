@@ -23,7 +23,7 @@ const UBadge = resolveComponent('UBadge')
 /** Pre-resolved UButton component for use in render functions */
 const UButton = resolveComponent('UButton')
 
-/** Static model labels keyed by persisted model identifier. */
+/** Static model labels keyed by persisted model identifier */
 const modelLabels = new Map(MODELS.map(model => [model.value, model.label]))
 
 /** CSRF token utilities for securing mutating API requests */
@@ -65,9 +65,8 @@ async function confirmDelete(id: number) {
   if (!deleteModal) {
     deleteModal = overlay.create(LazyModalConfirm, {
       props: {
-        title: 'Eliminar del caché',
-        description:
-          '¿Eliminar este registro del caché? Esta acción no afecta al documento en Paperless.'
+        title: 'Delete from cache',
+        description: 'Delete this cache record? This will not affect the document in Paperless.'
       }
     })
   }

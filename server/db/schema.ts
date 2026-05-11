@@ -19,6 +19,26 @@ const timestamps = {
 }
 
 /**
+ * Projects table — user-owned workspaces that group related chats.
+ * Chats can belong to one project or remain standalone.
+ */
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id').notNull(),
+    name: text('name').notNull(),
+    ...timestamps
+  },
+  table => [
+    index('projects_user_id_idx').on(table.userId),
+    index('projects_created_at_idx').on(table.createdAt)
+  ]
+)
+
+/**
  * Chats table — stores conversation metadata.
  * Each chat is owned by a user identified by their session cookie.
  */
@@ -34,10 +54,14 @@ export const chats = sqliteTable(
       .notNull()
       .default('private'),
     personality: text('personality').notNull().default('friendly'),
+    projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
     documentId: integer('document_id'),
     ...timestamps
   },
-  table => [index('chats_user_id_idx').on(table.userId)]
+  table => [
+    index('chats_user_id_idx').on(table.userId),
+    index('chats_project_id_idx').on(table.projectId)
+  ]
 )
 
 /**
@@ -206,11 +230,20 @@ export const chatDocuments = sqliteTable(
   ]
 )
 
-/** Defines the one-to-many relationships between a chat and its records. */
-export const chatsRelations = relations(chats, ({ many }) => ({
+/** Defines the relationships between a chat and its records/project. */
+export const chatsRelations = relations(chats, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [chats.projectId],
+    references: [projects.id]
+  }),
   messages: many(messages),
   documents: many(chatDocuments),
   shares: many(chatShares)
+}))
+
+/** Defines the one-to-many relationship between a project and its chats. */
+export const projectsRelations = relations(projects, ({ many }) => ({
+  chats: many(chats)
 }))
 
 /** Defines the many-to-one relationships for chat document attachments. */

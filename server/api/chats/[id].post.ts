@@ -1,4 +1,4 @@
-import type { UIMessage } from 'ai'
+import type { LanguageModelUsage, UIMessage } from 'ai'
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -18,7 +18,13 @@ import {
   resolveLanguageModel
 } from '../../utils/aiModels'
 import { getAIUserErrorMessage } from '../../utils/aiErrors'
-import { buildChatDocumentContext } from '../../utils/chatDocuments'
+import {
+  MAX_CHAT_DOCUMENTS,
+  assertChatDocumentsAvailable,
+  buildChatDocumentContext,
+  normalizeChatDocumentIds,
+  replaceChatDocuments
+} from '../../utils/chatDocuments'
 
 defineRouteMeta({
   openAPI: {
@@ -48,7 +54,7 @@ export default defineEventHandler(async event => {
     }).parse
   )
 
-  const { model, messages } = await readValidatedBody(
+  const { model, messages, documentIds } = await readValidatedBody(
     event,
     z.object({
       /** AI model identifier in `provider/modelId` format. */
@@ -56,7 +62,9 @@ export default defineEventHandler(async event => {
         message: 'Invalid model'
       }),
       /** Array of UI messages in the conversation (including the new user message). */
-      messages: z.array(z.custom<UIMessage>())
+      messages: z.array(z.custom<UIMessage>()),
+      /** Optional Paperless document context selected in an existing chat. */
+      documentIds: z.array(z.number().int().positive()).max(MAX_CHAT_DOCUMENTS).optional()
     }).parse
   )
 
@@ -73,10 +81,21 @@ export default defineEventHandler(async event => {
     throw createError({ statusCode: 404, statusMessage: 'Chat not found' })
   }
 
+  const normalizedDocumentIds = documentIds ? normalizeChatDocumentIds({ documentIds }) : undefined
+
+  if (normalizedDocumentIds) {
+    await assertChatDocumentsAvailable(normalizedDocumentIds)
+    await replaceChatDocuments(chat.id, normalizedDocumentIds)
+  }
+
+  const chatWithDocumentContext = normalizedDocumentIds
+    ? { ...chat, documentId: normalizedDocumentIds[0] ?? null }
+    : chat
+
   // Retrieve the personality system prompt for this chat
   const personalityPrompt = await resolvePersonalityPrompt(chat.personality, userId)
 
-  const documentContext = await buildChatDocumentContext(chat)
+  const documentContext = await buildChatDocumentContext(chatWithDocumentContext)
 
   // Auto-generate a title on the first message if none exists
   if (!chat.title) {
@@ -109,7 +128,7 @@ export default defineEventHandler(async event => {
 
   // Persist the latest user message (upsert in case of edit/regenerate)
   const lastMessage = messages[messages.length - 1]
-  if (lastMessage?.role === 'user' && messages.length > 1) {
+  if (lastMessage?.role === 'user') {
     await db
       .insert(schema.messages)
       .values({
@@ -166,7 +185,17 @@ export default defineEventHandler(async event => {
           weather: weatherTool
         },
         stopWhen: stepCountIs(5),
-        experimental_transform: smoothStream()
+        experimental_transform: smoothStream(),
+        onFinish: ({ totalUsage, finishReason }) => {
+          writer.write({
+            type: 'data-chat-usage',
+            data: {
+              usage: serializeUsage(totalUsage),
+              finishReason
+            },
+            transient: true
+          })
+        }
       })
 
       // Notify the client that a title is being generated
@@ -227,4 +256,21 @@ function normalizeChatTitle(value: string): string {
     .trim()
     .slice(0, 30)
     .trim()
+}
+
+function serializeUsage(usage: LanguageModelUsage) {
+  return {
+    inputTokens: usage.inputTokens ?? null,
+    outputTokens: usage.outputTokens ?? null,
+    totalTokens: usage.totalTokens ?? null,
+    inputTokenDetails: {
+      noCacheTokens: usage.inputTokenDetails.noCacheTokens ?? null,
+      cacheReadTokens: usage.inputTokenDetails.cacheReadTokens ?? null,
+      cacheWriteTokens: usage.inputTokenDetails.cacheWriteTokens ?? null
+    },
+    outputTokenDetails: {
+      textTokens: usage.outputTokenDetails.textTokens ?? null,
+      reasoningTokens: usage.outputTokenDetails.reasoningTokens ?? null
+    }
+  }
 }

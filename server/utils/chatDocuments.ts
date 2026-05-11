@@ -1,28 +1,57 @@
+/**
+ * @file Chat document attachment utilities.
+ *
+ * Manages the relationship between chats and Paperless-ngx documents used as
+ * AI context. Supports up to {@link MAX_CHAT_DOCUMENTS} documents per chat,
+ * persisted in the `chat_documents` join table with ordered positions.
+ * Also provides helpers to build system-prompt context sections from attached
+ * documents so the AI can reference their content during generation.
+ */
+
 import { db, schema } from 'hub:db'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 
+/** Maximum number of Paperless documents that can be attached to a single chat. */
 export const MAX_CHAT_DOCUMENTS = 5
 
+/** Input payload supporting both legacy single-document and multi-document attachment. */
 type ChatDocumentInput = {
+  /** Legacy single Paperless document ID. */
   documentId?: number | null
+  /** Ordered array of Paperless document IDs (preferred). */
   documentIds?: number[] | null
 }
 
+/** A chat row that may carry a legacy `documentId` column value. */
 type ChatWithLegacyDocument = {
+  /** Chat UUID. */
   id: string
+  /** Legacy single-document column (kept in sync for backward compatibility). */
   documentId?: number | null
 }
 
+/** Lightweight document summary returned in API responses. */
 export type ChatDocumentSummary = {
+  /** Paperless-ngx document ID. */
   id: number
+  /** Document title for display. */
   title: string
 }
 
+/**
+ * Full document context used when building the AI system prompt.
+ * Combines summary fields with content and ordering information.
+ */
 type ChatDocumentContext = ChatDocumentSummary & {
+  /** Correspondent ID, or `null` if unassigned. */
   correspondent: number | null
+  /** Document type ID, or `null` if unassigned. */
   documentType: number | null
+  /** AI-generated enrichment content, or `null` if not processed. */
   aiContent: string | null
+  /** Raw OCR-extracted content, or `null` if not processed. */
   ocrContent: string | null
+  /** Position index preserving selection order (0-based). */
   position: number
 }
 
@@ -85,6 +114,21 @@ export async function insertChatDocuments(chatId: string, documentIds: number[])
       }))
     )
     .onConflictDoNothing()
+}
+
+/**
+ * Replaces all document attachments for a chat with the provided ordered list.
+ * Keeps the legacy `chats.document_id` column in sync for older code paths.
+ */
+export async function replaceChatDocuments(chatId: string, documentIds: number[]) {
+  await db.delete(schema.chatDocuments).where(eq(schema.chatDocuments.chatId, chatId))
+
+  await db
+    .update(schema.chats)
+    .set({ documentId: documentIds[0] ?? null })
+    .where(eq(schema.chats.id, chatId))
+
+  await insertChatDocuments(chatId, documentIds)
 }
 
 /** Returns lightweight document metadata attached to a chat. */

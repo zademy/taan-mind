@@ -169,6 +169,11 @@ At a high level:
   <a href="images/11.png"><img src="images/11.png" width="32%"></a>
   <a href="images/12.png"><img src="images/12.png" width="32%"></a>
 </p>
+<p align="center">
+  <a href="images/13.png"><img src="images/13.png" width="32%"></a>
+  <a href="images/14.png"><img src="images/14.png" width="32%"></a>
+  <a href="images/15.png"><img src="images/15.png" width="32%"></a>
+</p>
 
 ## Getting Started
 

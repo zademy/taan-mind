@@ -23,7 +23,12 @@ interface DocumentItem {
   disabled?: boolean
 }
 
+/** Component props */
 const props = withDefaults(
+  /**
+   * @property {boolean} disabled - Whether the selector is interactive
+   * @property {number} max - Maximum number of selectable documents
+   */
   defineProps<{
     disabled?: boolean
     max?: number
@@ -32,6 +37,14 @@ const props = withDefaults(
     max: 5
   }
 )
+
+/**
+ * Emitted whenever the set of selected documents changes.
+ * @event selectedDocuments - Array of currently selected documents with id and title
+ */
+const emit = defineEmits<{
+  selectedDocuments: [documents: DocumentResult[]]
+}>()
 
 /** Two-way bound value: selected document IDs in user-selected order */
 const model = defineModel<number[]>({ default: () => [] })
@@ -103,6 +116,17 @@ function mergeItems(documents: DocumentResult[]) {
   }
 
   items.value = Array.from(byId.values()).map(applySelectionLimit)
+  emitSelectedDocuments()
+}
+
+function emitSelectedDocuments() {
+  emit(
+    'selectedDocuments',
+    model.value.map(id => ({
+      id,
+      title: itemCache.value[id]?.label ?? `Document #${id}`
+    }))
+  )
 }
 
 /**
@@ -155,6 +179,7 @@ watch(
     }
 
     items.value = items.value.map(applySelectionLimit)
+    emitSelectedDocuments()
   },
   { deep: true }
 )
