@@ -154,6 +154,25 @@ ${documents.map(formatDocumentContext).join('\n---\n')}
 `
 }
 
+/** Builds a system-prompt document context section from an explicit ordered ID list. */
+export async function buildDocumentContextFromIds(documentIds: number[]) {
+  if (documentIds.length === 0) return ''
+
+  const documents = await getDocumentsByIds(documentIds)
+  if (documents.length === 0) return ''
+
+  const heading =
+    documents.length === 1
+      ? '**DOCUMENT CONTEXT (reference material for this inline AI action):**'
+      : `**DOCUMENT CONTEXTS (${documents.length} reference documents for this inline AI action):**`
+
+  return `${heading}
+${documents.map(formatDocumentContext).join('\n---\n')}
+---
+
+`
+}
+
 async function getChatDocuments(chat: ChatWithLegacyDocument): Promise<ChatDocumentContext[]> {
   const cd = schema.chatDocuments
   const doc = schema.paperlessDocuments
@@ -194,6 +213,31 @@ async function getChatDocuments(chat: ChatWithLegacyDocument): Promise<ChatDocum
       position: 0
     }
   ]
+}
+
+async function getDocumentsByIds(documentIds: number[]): Promise<ChatDocumentContext[]> {
+  const doc = schema.paperlessDocuments
+
+  const rows = await db
+    .select({
+      id: doc.id,
+      title: doc.title,
+      correspondent: doc.correspondent,
+      documentType: doc.documentType,
+      aiContent: doc.aiContent,
+      ocrContent: doc.ocrContent
+    })
+    .from(doc)
+    .where(and(inArray(doc.id, documentIds), isNull(doc.deletedAt)))
+
+  const rowsById = new Map(rows.map(row => [row.id, row]))
+
+  return documentIds
+    .map((id, position) => {
+      const row = rowsById.get(id)
+      return row ? { ...row, position } : null
+    })
+    .filter((row): row is ChatDocumentContext => row !== null)
 }
 
 function formatDocumentContext(document: ChatDocumentContext, index: number) {

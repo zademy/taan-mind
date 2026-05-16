@@ -20,6 +20,8 @@ const textarea = ref<HTMLTextAreaElement | null>(null)
 const toast = useToast()
 /** CSRF token utilities for securing mutating API requests */
 const { csrf, headerName } = useCsrf()
+/** Reactive model reference shared via the useModels composable */
+const { model } = useModels()
 /** Currently selected personality (shared reactive state) */
 const { personality } = usePersonality()
 
@@ -189,6 +191,13 @@ async function onSubmit(event?: Event) {
               class="max-h-55 min-h-16 w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-base text-highlighted placeholder:text-dimmed outline-none disabled:cursor-not-allowed disabled:opacity-75"
               @input="resizeTextarea"
               @keydown.enter.exact.prevent="onSubmit"
+            />
+
+            <AiInlineAssistant
+              v-model="input"
+              :model="model"
+              :document-ids="selectedDocIds"
+              :disabled="loading"
             />
 
             <!-- Bottom toolbar: model/personality selectors and send button -->
