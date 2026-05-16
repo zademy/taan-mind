@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the structure recommended by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates use ISO 8601 format: `YYYY-MM-DD`.
 
+## [1.0.10] - 2026-05-16
+
+### Added
+
+- Inline AI Assistant integration in both the chat page and the home page prompt input. Users can now trigger contextual rewrite and document-intelligence actions directly while composing messages (`AiInlineAssistant` component wired with `model` and `document-ids` props).
+- `buildDocumentContextFromIds()` utility in `server/utils/chatDocuments.ts` for building a system-prompt document context section from an explicit ordered ID list (used by the inline AI assistant endpoint).
+- Reactive model reference (`useModels()`) added to the home page (`index.vue`) to power inline AI actions.
+- `.atl/` directory added to `.gitignore` for local Pi runtime state.
+
+### Changed
+
+- Chat page footer layout restructured from flat `flex-wrap` to `flex-col` with the inline assistant above the model/personality/document selectors for clearer visual hierarchy.
+- Sidebar version label bumped to `v1.0.10`.
+- Updated `AGENTS.md` and `README.md` documentation to reflect the new inline AI assistant capabilities.
+
+## [1.0.9] - 2026-05-11
+
+### Added
+
+- Centralized AI provider error handling in `server/utils/aiErrors.ts` with `getAIUserErrorMessage()` for safe user-facing messages, `getParsedErrorMessage()` for JSON response parsing, and special-case handling for rate limits (429), insufficient credits (402), and service unavailable (503).
+- New screenshots (`images/13.png`, `images/14.png`, `images/15.png`) and updated `README.md` documentation.
+
+### Changed
+
+- Sidebar version label bumped from `v1.0.8` to `v1.0.9`.
+
 ## [1.0.8] - 2026-05-10
 
 ### Added

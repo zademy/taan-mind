@@ -420,28 +420,37 @@ async function regenerateMessage(message: UIMessage) {
 
             <!-- Bottom toolbar: model/personality selectors and action buttons -->
             <template #footer>
-              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-                <ModelSelect aria-label="Select AI model" />
-                <PersonalitySelect aria-label="Select AI personality" />
-                <DocumentSelect
-                  v-if="project"
-                  v-model="selectedDocIds"
-                  aria-label="Select project document contexts"
+              <div class="flex min-w-0 flex-col gap-3">
+                <AiInlineAssistant
+                  v-model="input"
+                  :model="model"
+                  :document-ids="selectedDocIds"
                   :disabled="syncingDocuments || chat.status !== 'ready'"
-                  @selected-documents="selectedDocuments = $event"
                 />
-                <UBadge
-                  v-if="chatDocuments.length > 0"
-                  color="primary"
-                  variant="subtle"
-                  icon="i-lucide-files"
-                  class="max-w-full"
-                >
-                  <span class="truncate">{{ documentContextLabel }}</span>
-                </UBadge>
-                <UBadge v-else color="neutral" variant="subtle" icon="i-lucide-file-x-2">
-                  No document context
-                </UBadge>
+
+                <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <ModelSelect aria-label="Select AI model" />
+                  <PersonalitySelect aria-label="Select AI personality" />
+                  <DocumentSelect
+                    v-if="project"
+                    v-model="selectedDocIds"
+                    aria-label="Select project document contexts"
+                    :disabled="syncingDocuments || chat.status !== 'ready'"
+                    @selected-documents="selectedDocuments = $event"
+                  />
+                  <UBadge
+                    v-if="chatDocuments.length > 0"
+                    color="primary"
+                    variant="subtle"
+                    icon="i-lucide-files"
+                    class="max-w-full"
+                  >
+                    <span class="truncate">{{ documentContextLabel }}</span>
+                  </UBadge>
+                  <UBadge v-else color="neutral" variant="subtle" icon="i-lucide-file-x-2">
+                    No document context
+                  </UBadge>
+                </div>
               </div>
             </template>
           </UChatPrompt>

@@ -41,6 +41,10 @@
 - **Anonymous Sessions** — No login required, HTTP-only session cookies with local SQLite storage
 - **Docker Ready** — Multi-stage Dockerfile with hardened runtime and integrated Paperless-ngx stack via Docker Compose
 
+<p align="center">
+  <a href="images/01.png"><img src="images/00.png" width="100%"></a>
+</p>
+
 ## Tech Stack
 
 | Technology                                           | Purpose                            |
