@@ -19,7 +19,7 @@ const customPersonalityBodySchema = z.object({
 /**
  * PATCH /api/personalities/:id
  *
- * Updates a custom personality owned by the current anonymous user.
+ * Updates a custom personality owned by the current authenticated user.
  * Built-in personalities are not stored here and cannot be edited.
  */
 export default defineEventHandler(async event => {

@@ -18,7 +18,7 @@ const customPersonalityBodySchema = z.object({
 /**
  * POST /api/personalities
  *
- * Creates one custom markdown personality for the current anonymous user.
+ * Creates one custom markdown personality for the current authenticated user.
  * Enforces the server-side max of three custom personalities per user.
  */
 export default defineEventHandler(async event => {

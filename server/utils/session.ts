@@ -1,35 +1,57 @@
 /**
- * @file Anonymous session management for chat persistence.
+ * @file Authenticated session management for chat persistence.
  *
- * Provides a cookie-based user identity that allows unauthenticated users
- * to maintain persistent chat histories across browser sessions.
+ * Provides Better Auth-backed user identity helpers for server routes.
  */
 import type { H3Event } from 'h3'
+import { auth } from '~~/server/utils/betterAuth'
 
-/** Name of the cookie used to store the anonymous chat session ID. */
-const CHAT_SESSION_COOKIE = 'paperless_chat_session'
+type AuthSession = NonNullable<Awaited<ReturnType<typeof getAuthSession>>>
+
+/** Legacy cookie name used by anonymous sessions before Better Auth. */
+export const ANONYMOUS_CHAT_SESSION_COOKIE = 'paperless_chat_session'
 
 /**
- * Returns a user ID derived from a session cookie.
+ * Returns the current Better Auth session, if present.
  *
- * If the cookie does not exist, a new UUID is generated, stored as an
- * httpOnly cookie (valid for 1 year), and returned. This allows anonymous
- * users to have persistent chat histories without requiring authentication.
+ * @param event - The H3 event used to read request headers.
+ * @returns The authenticated session or null.
+ */
+export async function getAuthSession(event: H3Event) {
+  return await auth.api.getSession({ headers: event.headers })
+}
+
+/**
+ * Requires an authenticated Better Auth session.
  *
- * @param event - The H3 event used to read and set cookies.
- * @returns The session-based user ID.
+ * @param event - The H3 event used to read request headers.
+ * @returns The authenticated session.
+ */
+export async function requireAuthSession(event: H3Event) {
+  const session =
+    (event.context.authSession as AuthSession | undefined) || (await getAuthSession(event))
+
+  if (!session?.user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
+  event.context.authSession = session
+
+  return session
+}
+
+/**
+ * Returns the authenticated user ID used by owned chat/project records.
+ *
+ * @param event - The H3 event used to read request headers.
+ * @returns The Better Auth user ID.
  */
 export function getChatUserId(event: H3Event): string {
-  const existing = getCookie(event, CHAT_SESSION_COOKIE)
-  if (existing) return existing
+  const session = event.context.authSession as AuthSession | undefined
 
-  const sessionId = crypto.randomUUID()
-  setCookie(event, CHAT_SESSION_COOKIE, sessionId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365 // 1 year
-  })
+  if (!session?.user?.id) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
 
-  return sessionId
+  return session.user.id
 }

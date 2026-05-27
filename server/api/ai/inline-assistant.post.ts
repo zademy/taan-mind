@@ -39,7 +39,7 @@ const inlineAssistantBodySchema = z.object({
 })
 
 export default defineEventHandler(async event => {
-  // Ensures the anonymous session cookie exists before any provider request.
+  // Requires an authenticated user before any provider request.
   getChatUserId(event)
 
   const { model, action, text, documentIds } = await readValidatedBody(

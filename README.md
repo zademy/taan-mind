@@ -38,7 +38,7 @@
 - **Document Context** — Inject [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) document content (OCR/AI-processed) as context into chats
 - **Read-only Chat Sharing** — Generate revocable live share links that expose a minimal no-sidebar transcript view
 - **AI Tools** — Chart generation, weather forecasts, and web search sources
-- **Anonymous Sessions** — No login required, HTTP-only session cookies with local SQLite storage
+- **Authentication** — Better Auth email/password login with local SQLite sessions and first-run admin bootstrap
 - **Docker Ready** — Multi-stage Dockerfile with hardened runtime and integrated Paperless-ngx stack via Docker Compose
 
 <p align="center">
@@ -148,7 +148,7 @@ At a high level:
 - The Paperless proxy keeps Paperless operations behind the app API.
 - The sync worker imports Paperless document metadata into the app database.
 - The document processor reads cached documents, runs OCR, enriches the result with the selected AI model, and patches missing metadata back into Paperless.
-- SQLite stores app-owned data such as anonymous chats, cached document content, processing status, and settings.
+- SQLite stores app-owned data such as authenticated chats, cached document content, processing status, and settings.
 - Paperless keeps its own metadata, task queue, rendering services, and media files inside the Paperless-ngx stack.
 
 ## Screenshots
@@ -239,6 +239,11 @@ The app runs on `http://localhost:3000` and Paperless-ngx on `http://localhost:8
 | `OPENROUTER_API_KEY`           | No       | OpenRouter API key for dynamic model discovery and chat/enrichment |
 | `NOVA_API_KEY`                 | Yes      | Amazon Nova API key                                                |
 | `NOVA_BASE_URL`                | No       | Amazon Nova API endpoint                                           |
+| `BETTER_AUTH_SECRET`           | Yes      | Better Auth signing secret, at least 32 characters                 |
+| `BETTER_AUTH_URL`              | Yes      | Public base URL for auth callbacks and cookies                     |
+| `NUXT_AUTH_ADMIN_EMAIL`        | Yes      | First-run admin login email                                        |
+| `NUXT_AUTH_ADMIN_PASSWORD`     | Yes      | First-run admin password, at least 12 characters                   |
+| `NUXT_AUTH_ADMIN_NAME`         | No       | First-run admin display name (`Taan Admin`)                        |
 | `NUXT_PAPERLESS_BASE_URL`      | Yes      | Paperless-ngx instance URL                                         |
 | `NUXT_PAPERLESS_API_TOKEN`     | Yes      | Paperless-ngx API token                                            |
 | `PAPERLESS_BOOTSTRAP_USER`     | No       | Admin user created by Docker Compose (`paperless`)                 |
@@ -248,6 +253,8 @@ The app runs on `http://localhost:3000` and Paperless-ngx on `http://localhost:8
 | `NUXT_OLLAMA_MODEL`            | No       | Ollama model for OCR (`glm-ocr:latest`)                            |
 | `NUXT_SYNC_INTERVAL_MS`        | No       | Paperless sync interval in ms (`5000`)                             |
 | `NUXT_PROCESS_INTERVAL_MS`     | No       | Document processing interval in ms (`10000`)                       |
+
+`BETTER_AUTH_SECRET` has no development fallback. The app refuses to start when it is missing or shorter than 32 characters.
 
 ## Ollama Runtime
 

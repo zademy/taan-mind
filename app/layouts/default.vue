@@ -10,6 +10,7 @@ import {
   LazyProjectsCreateModal,
   LazySettingsPersonalitiesModal
 } from '#components'
+import { authClient } from '~/utils/auth-client'
 
 /** Sidebar navigation mode — persisted as a cookie so it survives page reloads */
 type SidebarMode = 'chats' | 'taanwork'
@@ -47,6 +48,7 @@ const toast = useToast()
 const overlay = useOverlay()
 const { csrf, headerName } = useCsrf()
 const { personality } = usePersonality()
+const { data: session } = await authClient.useSession(useFetch)
 
 /** Controls the sidebar open/close state on mobile. */
 const open = ref(false)
@@ -89,15 +91,33 @@ function openSettings() {
   settingsModal.open()
 }
 
-const settingsItems: DropdownMenuItem[][] = [
+async function signOut() {
+  await authClient.signOut()
+  clearNuxtData()
+  await navigateTo('/login', { replace: true })
+}
+
+const settingsItems = computed<DropdownMenuItem[][]>(() => [
+  [
+    {
+      label: session.value?.user.email || 'Signed in',
+      icon: 'i-lucide-user',
+      disabled: true
+    }
+  ],
   [
     {
       label: 'Administration',
       icon: 'i-lucide-shield-cog',
       onSelect: openSettings
+    },
+    {
+      label: 'Sign out',
+      icon: 'i-lucide-log-out',
+      onSelect: signOut
     }
   ]
-]
+])
 
 /** Extracts the active chat ID from the current route params */
 const activeChatId = computed(() => {
@@ -489,7 +509,7 @@ defineShortcuts({
             />
           </UDropdownMenu>
 
-          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.10</span>
+          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.11</span>
         </div>
       </template>
     </UDashboardSidebar>

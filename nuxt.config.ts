@@ -31,6 +31,9 @@ export default defineNuxtConfig({
     openrouterApiKey: '',
     novaApiKey: '',
     novaBaseUrl: '',
+    authAdminEmail: '',
+    authAdminPassword: '',
+    authAdminName: '',
     paperlessBaseUrl: '',
     paperlessApiToken: '',
     ollamaBaseUrl: '',
@@ -40,6 +43,7 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
+    '/api/auth/**': { csurf: false } as Record<string, boolean>,
     '/api/ocr/**': { csurf: false } as Record<string, boolean>,
     '/api/paperless/documents/*/ocr': { csurf: false } as Record<string, boolean>,
     '/api/cache/**': { csurf: false } as Record<string, boolean>

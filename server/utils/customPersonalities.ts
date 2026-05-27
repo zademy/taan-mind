@@ -35,9 +35,9 @@ export function serializeCustomPersonality(row: CustomPersonalityRow): CustomPer
 }
 
 /**
- * Lists custom personalities owned by an anonymous user.
+ * Lists custom personalities owned by an authenticated user.
  *
- * @param userId - Session-derived user ID.
+ * @param userId - Better Auth user ID.
  * @returns Custom personalities ordered by creation date.
  */
 export async function listCustomPersonalities(userId: string): Promise<CustomPersonality[]> {
@@ -54,7 +54,7 @@ export async function listCustomPersonalities(userId: string): Promise<CustomPer
  * Verifies a personality value can be used by the current user.
  *
  * @param personality - Default ID or `custom:<uuid>` value.
- * @param userId - Session-derived user ID.
+ * @param userId - Better Auth user ID.
  * @returns The validated personality value.
  * @throws 400 when the personality value is invalid or unavailable.
  */
@@ -94,7 +94,7 @@ export async function assertPersonalityAvailable(
  * Resolves the system prompt for a stored chat personality.
  *
  * @param personality - Default ID or `custom:<uuid>` value from the chat.
- * @param userId - Session-derived user ID.
+ * @param userId - Better Auth user ID.
  * @returns Matching system prompt, falling back to the default prompt if stale.
  */
 export async function resolvePersonalityPrompt(
@@ -124,7 +124,7 @@ export async function resolvePersonalityPrompt(
 /**
  * Enforces the per-user custom personality quota.
  *
- * @param userId - Session-derived user ID.
+ * @param userId - Better Auth user ID.
  * @throws 400 when the user already has the maximum number of custom personalities.
  */
 export async function assertCustomPersonalityQuota(userId: string): Promise<void> {
