@@ -245,7 +245,8 @@ export default defineNitroPlugin(nitroApp => {
         )
         const ocrResult = await $fetch(`/api/paperless/documents/${doc.id}/ocr`, {
           method: 'POST',
-          baseURL: '/'
+          baseURL: '/',
+          headers: getInternalApiAuthHeaders()
         })
         consola.info(
           `[Document Processor] Doc #${doc.id} — OCR completed: ${ocrResult.ocr.totalPages} pages extracted (${ocrResult.ocr.pages.reduce((acc: number, p: { text: string }) => acc + p.text.length, 0)} characters)`

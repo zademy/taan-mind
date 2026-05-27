@@ -5,7 +5,7 @@ import { z } from 'zod'
 /**
  * DELETE /api/personalities/:id
  *
- * Deletes a custom personality owned by the current anonymous user.
+ * Deletes a custom personality owned by the current authenticated user.
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

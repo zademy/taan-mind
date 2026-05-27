@@ -2,7 +2,7 @@
 # Dockerfile — paperless-ui-chat
 # ============================================================================
 #
-# Multi-stage Docker build for a Nuxt 3 application backed by libSQL (SQLite).
+# Multi-stage Docker build for a Nuxt 4 application backed by libSQL (SQLite).
 #
 # Build stages:
 #   1. base      → Shared Node.js base with pnpm via Corepack
@@ -27,8 +27,10 @@
 # These can be overridden at build time via --build-arg.
 # NODE_VERSION: Version of the Node.js runtime used across all stages.
 # PNPM_VERSION: Version of the pnpm package manager activated via Corepack.
+# BUILD_NODE_OPTIONS: Node.js options used only while compiling Nuxt/Nitro.
 ARG NODE_VERSION=24.14.1
 ARG PNPM_VERSION=10.33.2
+ARG BUILD_NODE_OPTIONS=--max-old-space-size=4096
 
 # ─── Stage 1: base ─────────────────────────────────────────────────────────
 # Purpose: Set up the shared base image with Node.js, pnpm, and common
@@ -74,18 +76,19 @@ RUN pnpm fetch
 
 # ─── Stage 3: build ───────────────────────────────────────────────────────
 # Purpose: Install all dependencies from the cached store and compile the
-#          Nuxt 3 application into a standalone Nitro server bundle.
+#          Nuxt 4 application into a standalone Nitro server bundle.
 FROM base AS build
+ARG BUILD_NODE_OPTIONS
 
 # Environment variables for the build stage:
 #   NODE_ENV=production           — Optimize dependencies for production.
 #   NITRO_PRESET=node-server      — Target Nitro's Node.js server preset.
-#   NODE_OPTIONS                  — Allocate up to 2.5 GB for the V8 heap
-#                                   to handle large Nuxt builds.
+#   NODE_OPTIONS                  — Allocate a larger V8 heap while building
+#                                   Nuxt/Nitro inside Docker.
 #   SKIP_INSTALL_SIMPLE_GIT_HOOKS=1 — Prevent git hooks setup in CI/container.
 ENV NODE_ENV=production \
     NITRO_PRESET=node-server \
-    NODE_OPTIONS=--max-old-space-size=2560 \
+    NODE_OPTIONS=${BUILD_NODE_OPTIONS} \
     SKIP_INSTALL_SIMPLE_GIT_HOOKS=1
 
 # Copy the pre-fetched pnpm package store from the deps stage.
