@@ -5,10 +5,11 @@
 -->
 <script setup lang="ts">
 import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
+import { APP_VERSION } from '#shared/utils/appMetadata'
 import {
   LazyModalConfirm,
   LazyProjectsCreateModal,
-  LazySettingsPersonalitiesModal
+  LazySettingsAdministrationModal
 } from '#components'
 import { authClient } from '~/utils/auth-client'
 
@@ -82,7 +83,7 @@ const deleteProjectModal = overlay.create(LazyModalConfirm, {
     confirmLabel: 'Delete project'
   }
 })
-const settingsModal = overlay.create(LazySettingsPersonalitiesModal)
+const settingsModal = overlay.create(LazySettingsAdministrationModal)
 const createProjectModal = overlay.create(LazyProjectsCreateModal)
 
 /** Opens the administration settings modal and closes the mobile sidebar */
@@ -509,7 +510,7 @@ defineShortcuts({
             />
           </UDropdownMenu>
 
-          <span v-if="!collapsed" class="text-xs text-dimmed"> v1.0.11</span>
+          <span v-if="!collapsed" class="text-xs text-dimmed">{{ APP_VERSION }}</span>
         </div>
       </template>
     </UDashboardSidebar>
