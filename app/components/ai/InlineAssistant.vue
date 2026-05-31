@@ -1,3 +1,25 @@
+<!--
+  InlineAssistant.vue - Inline AI rewrite orchestrator
+  Coordinates the full inline AI lifecycle: detecting when suggestions are available,
+  triggering the streaming rewrite via `useInlineAIRewrite`, rendering the
+  `AIStreamingRewrite` compare/accept UI, and emitting accepted drafts back to the parent.
+
+  Keyboard shortcuts:
+    Cmd/Ctrl+K — open the AI actions dropdown
+    Escape     — cancel an in-progress rewrite
+
+  The component is intentionally conditional-rendered so it only mounts when
+  the input has enough text or there is an active rewrite in progress.
+
+  @prop modelValue - The current prompt text (v-model)
+  @prop model       - The active AI model identifier used for the rewrite
+  @prop documentIds - Optional Paperless document IDs passed as context to the rewrite
+  @prop disabled    - Prevents all interactions when the chat prompt is disabled
+  @prop minCharacters - Threshold before the AI button appears (default: 30 from inlineAi.ts)
+
+  @emits update:modelValue - Called when the user accepts an AI draft
+  @emits accepted - Called on accept with the action ID that was applied
+-->
 <script setup lang="ts">
 import {
   INLINE_AI_MIN_CHARACTERS,
@@ -128,8 +150,8 @@ defineShortcuts({
 </script>
 
 <template>
-  <div v-if="canSuggest || showRewrite" class="flex min-w-0 flex-col gap-2">
-    <div class="flex justify-end">
+  <div v-if="canSuggest || showRewrite" class="flex w-full min-w-0 flex-col gap-2">
+    <div class="flex w-full justify-end">
       <InlineAIButton
         ref="inlineButton"
         :visible="canSuggest"

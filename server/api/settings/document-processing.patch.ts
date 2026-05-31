@@ -1,3 +1,12 @@
+/**
+ * Update Document Processing Settings — PATCH /api/settings/document-processing
+ *
+ * Updates the global AI enrichment model used by the background document
+ * processor. Validates the model is available before persisting the change.
+ *
+ * @module server/api/settings
+ */
+
 import { z } from 'zod'
 import type { DocumentProcessingSettings, ModelId } from '#shared/utils/models'
 import { isDocumentProcessingModel } from '#shared/utils/models'

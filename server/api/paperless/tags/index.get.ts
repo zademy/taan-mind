@@ -1,3 +1,11 @@
+/**
+ * Paperless Tags — GET /api/paperless/tags
+ *
+ * Lists all tags from Paperless-ngx with optional pagination and ordering.
+ *
+ * @module server/api/paperless
+ */
+
 import type { PaperlessTag, PaperlessPaginatedResponse } from '~~/shared/types/paperless'
 import { z } from 'zod'
 
@@ -25,11 +33,7 @@ export default defineEventHandler(
         query: buildPaperlessQuery(query)
       })
     } catch (error: unknown) {
-      const err = error as { statusCode?: number; statusMessage?: string }
-      throw createError({
-        statusCode: err?.statusCode || 502,
-        statusMessage: err?.statusMessage || 'Failed to fetch tags from Paperless'
-      })
+      handlePaperlessError(error, 'Failed to fetch tags from Paperless')
     }
   }
 )

@@ -7,6 +7,8 @@ import { z } from 'zod'
  *
  * Deletes a user-owned project and all chats related to it.
  * Chats are deleted first because chats.project_id uses ON DELETE SET NULL.
+ *
+ * @module server/api/projects
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

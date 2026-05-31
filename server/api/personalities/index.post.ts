@@ -1,3 +1,12 @@
+/**
+ * Create Custom Personality — POST /api/personalities
+ *
+ * Creates one custom markdown personality for the current authenticated user.
+ * Enforces the server-side max of three custom personalities per user.
+ *
+ * @module server/api/personalities
+ */
+
 import { db, schema } from 'hub:db'
 import { z } from 'zod'
 import { MAX_CUSTOM_PERSONALITY_PROMPT_LENGTH } from '#shared/utils/personalities'

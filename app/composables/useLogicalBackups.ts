@@ -1,3 +1,16 @@
+/**
+ * Logical Backups Composable
+ *
+ * Provides download and restore operations for logical ZIP backups.
+ * Uses `$fetch` with CSRF headers for mutations and raw `fetch` with
+ * `credentials: include` for the binary download response.
+ *
+ * Restore uploads are sent as `multipart/form-data` with a `backup` field.
+ * Downloads rely on the existing authenticated session to stream a ZIP file.
+ *
+ * @module app/composables
+ */
+
 import type { LogicalBackupRestoreResult, LogicalBackupStatus } from '#shared/utils/backups'
 
 interface DownloadLogicalBackupOptions {

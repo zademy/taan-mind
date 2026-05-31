@@ -1,9 +1,19 @@
 /**
- * Comark component configuration for rendering rich chat content.
+ * Comark.ts — Chat markdown renderer configuration
  *
- * Uses Comark's Shiki highlighter without static language imports.
- * The highlighter is only created when a rendered message contains code blocks,
- * and Comark's default language set is loaded dynamically by the plugin.
+ * Wraps the NuxtUI Comark plugin to render AI assistant markdown with:
+ *   - Shiki syntax highlighting (dynamic, no static language imports)
+ *   - Custom source-link component injection via MDC (Markdown Components)
+ *   - Tailwind resets on first/last child margins
+ *
+ * Used as `<ChatComark :markdown="..." :streaming="..." />` in message rendering.
+ * The component's `plugins` and `components` are merged at registration time;
+ * `highlight()` is called here so the instance is shared across renders.
+ *
+ * Related:
+ *   app/components/chat/message/MessageContent.vue — renders ChatComark for
+ *     assistant text parts with streaming prop support
+ *   app/components/chat/SourceLink.vue — custom MDC component for external links
  */
 import highlight from '@comark/nuxt/plugins/highlight'
 /** Custom source-link component used within rendered markdown content */

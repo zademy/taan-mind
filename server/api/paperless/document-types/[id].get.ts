@@ -5,6 +5,8 @@ import { z } from 'zod'
  * GET /api/paperless/document-types/:id
  *
  * Returns a single document type by ID.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessDocumentType> => {
   const { id } = await getValidatedRouterParams(
@@ -16,10 +18,6 @@ export default defineEventHandler(async (event): Promise<PaperlessDocumentType> 
   try {
     return await client<PaperlessDocumentType>(`/document_types/${id}/`)
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to fetch document type ${id} from Paperless`
-    })
+    handlePaperlessError(error, `Failed to fetch document type ${id} from Paperless`)
   }
 })

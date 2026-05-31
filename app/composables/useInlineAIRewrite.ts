@@ -1,14 +1,42 @@
+/**
+ * Inline AI Rewrite Composable
+ *
+ * Manages the lifecycle of an inline AI rewrite operation:
+ *   - streaming the AI suggestion from `/api/ai/inline-assistant`
+ *   - comparing the original text against the streamed draft
+ *   - accepting, retrying, or canceling the rewrite
+ *
+ * The composable owns the HTTP request, AbortController, and state machine.
+ * UI components (`InlineAssistant`, `StreamingRewrite`) consume the returned
+ * reactive refs and action handlers.
+ *
+ * State machine: idle → streaming → ready | error → idle (via reset/accept/cancel)
+ *
+ * @module app/composables
+ */
 import type { InlineAIActionId } from '#shared/utils/inlineAi'
 
+/** Current state of an inline rewrite operation. */
 export type InlineAIRewriteStatus = 'idle' | 'streaming' | 'ready' | 'error'
 
+/**
+ * Options passed to {@link run} to trigger an inline AI rewrite.
+ */
 interface RunInlineAIRewriteOptions {
+  /** The action to perform (e.g., rewrite, summarize, extract-entities). */
   action: InlineAIActionId
+  /** User-supplied text to be rewritten or transformed. */
   text: string
+  /** AI model ID to use (e.g., `minimax/MiniMax-M2.7`). */
   model: string
+  /**
+   * Optional Paperless document IDs to inject as context.
+   * The inline assistant will see the document content alongside the action prompt.
+   */
   documentIds?: number[]
 }
 
+/** Rotating messages shown while waiting for the streaming response. */
 const INLINE_AI_LOADING_MESSAGES = [
   'Reading semantic structures...',
   'Compressing document context...',
@@ -31,6 +59,15 @@ export function useInlineAIRewrite() {
   const isBusy = computed(() => status.value === 'streaming')
   const hasDraft = computed(() => draft.value.trim().length > 0)
 
+  /**
+   * Triggers a new inline AI rewrite operation.
+   *
+   * Aborts any in-flight operation before starting.
+   * On success, sets `status` to `'ready'` with the draft text in `draft`.
+   * On error, sets `status` to `'error'` with a user-safe message in `error`.
+   *
+   * @param options - Action, text, model, and optional document IDs
+   */
   async function run(options: RunInlineAIRewriteOptions) {
     const text = options.text.trim()
     if (!text || status.value === 'streaming') return
@@ -82,17 +119,31 @@ export function useInlineAIRewrite() {
     }
   }
 
+  /**
+   * Accepts the current draft and returns it to the caller.
+   * Then resets the composable to idle so the prompt input can apply the result.
+   *
+   * @returns The trimmed draft text, ready to replace the original prompt.
+   */
   function acceptDraft() {
     const value = draft.value.trim()
     reset()
     return value
   }
 
+  /**
+   * Cancels the in-flight streaming operation and resets to idle.
+   * No draft is returned; the original text is preserved.
+   */
   function cancel() {
     abortController?.abort()
     reset()
   }
 
+  /**
+   * Resets all reactive state to initial values.
+   * Called implicitly by `acceptDraft`, `cancel`, and after abort signals.
+   */
   function reset() {
     abortController?.abort()
     status.value = 'idle'
@@ -102,6 +153,12 @@ export function useInlineAIRewrite() {
     error.value = null
   }
 
+  /**
+   * Reads a streaming fetch Response and accumulates the body into `draft`.
+   *
+   * Handles both plain text responses (non-streaming fallback) and
+   * `ReadableStream` responses from the AI SDK text stream.
+   */
   async function readTextStream(response: Response) {
     if (!response.body) {
       draft.value = await response.text()
@@ -140,10 +197,21 @@ export function useInlineAIRewrite() {
   }
 }
 
+/**
+ * Picks a random loading message for the AI spinner.
+ */
 function getRandomLoadingMessage() {
   return INLINE_AI_LOADING_MESSAGES[Math.floor(Math.random() * INLINE_AI_LOADING_MESSAGES.length)]!
 }
 
+/**
+ * Extracts a user-safe error message from a failed fetch Response.
+ *
+ * Tries to parse structured H3 error payloads first (Nuxt error format),
+ * then falls back to raw response text.
+ *
+ * @returns A human-readable error string, never throws.
+ */
 async function getResponseErrorMessage(response: Response) {
   try {
     const payload = (await response.clone().json()) as {

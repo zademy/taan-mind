@@ -6,6 +6,8 @@ import type { PaperlessStatistics } from '~~/shared/types/paperless'
  * Uses `useLazyFetch` so the request does not block navigation.
  *
  * @returns A `useLazyFetch` result with the statistics data.
+ *
+ * @module app/composables
  */
 export function usePaperlessStatistics() {
   return useLazyFetch<PaperlessStatistics>('/api/paperless/statistics')

@@ -1,3 +1,13 @@
+/**
+ * Tool Output Parsing Utilities
+ *
+ * Parses AI SDK tool calls and results from assistant messages.
+ * Extracts web search queries, source links, and structured output.
+ * Used by chat activity panel components to display tool results.
+ *
+ * @module app/utils
+ */
+
 import type { getToolName } from 'ai'
 
 /** Represents a web source reference extracted from search tool output. */

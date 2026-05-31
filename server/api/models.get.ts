@@ -1,3 +1,18 @@
+/**
+ * AI Model Catalog — GET /api/models
+ *
+ * Returns all selectable AI models for the current scope.
+ * Static catalog (MiniMax, GLM, OpenAI, Nova) is always included.
+ * Runtime-discovered models (Ollama, OpenRouter) are appended only
+ * when their providers are reachable.
+ *
+ * Scopes:
+ *   - `chat` (default): full model catalog
+ *   - `document-processing`: excludes Nova providers
+ *
+ * @module server/api
+ */
+
 import type { H3Event } from 'h3'
 import type { ModelId, ModelOption, ModelsResponse } from '#shared/utils/models'
 import {

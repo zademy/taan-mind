@@ -7,6 +7,7 @@
  */
 import { sqliteTable, text, integer, index, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
+import { ProcessingStatus } from '../../shared/utils/processingStatus'
 
 /**
  * Shared timestamp columns used across all tables.
@@ -284,7 +285,7 @@ export const paperlessDocuments = sqliteTable(
     aiContent: text('ai_content'),
     ocrMethod: text('ocr_method'),
     processingModel: text('processing_model'),
-    processed: integer('processed').notNull().default(0),
+    processed: integer('processed').notNull().default(ProcessingStatus.Pending),
     processingStartedAt: integer('processing_started_at', { mode: 'timestamp' }),
     processingCompletedAt: integer('processing_completed_at', { mode: 'timestamp' }),
     paperlessCreated: integer('paperless_created', { mode: 'timestamp' }),

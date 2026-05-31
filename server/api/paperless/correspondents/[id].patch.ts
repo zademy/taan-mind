@@ -10,6 +10,8 @@ const bodySchema = z.object({
  *
  * Updates an existing correspondent in Paperless-ngx.
  * Only the `name` field can be modified via this endpoint.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessCorrespondent> => {
   const { id } = await getValidatedRouterParams(
@@ -25,10 +27,6 @@ export default defineEventHandler(async (event): Promise<PaperlessCorrespondent>
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to update correspondent ${id} in Paperless`
-    })
+    handlePaperlessError(error, `Failed to update correspondent ${id} in Paperless`)
   }
 })

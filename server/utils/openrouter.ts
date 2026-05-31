@@ -6,6 +6,7 @@
  * expose current, text-capable models only.
  */
 import type { H3Event } from 'h3'
+import { createTtlCache } from './modelListCache'
 
 /** Base URL for OpenRouter's OpenAI-compatible API. */
 export const OPENROUTER_OPENAI_BASE_URL = 'https://openrouter.ai/api/v1'
@@ -32,6 +33,8 @@ interface OpenRouterModelsResponse {
   /** Models currently available through OpenRouter. */
   data?: OpenRouterModel[]
 }
+
+const openRouterModelsCache = createTtlCache<OpenRouterModel[]>()
 
 /** Runtime config subset required by OpenRouter helpers. */
 export interface OpenRouterRuntimeConfig {
@@ -69,23 +72,25 @@ export function getOpenRouterApiKeyFromConfig(config: OpenRouterRuntimeConfig): 
 export async function listOpenRouterModels(event: H3Event): Promise<OpenRouterModel[]> {
   const apiKey = getOpenRouterApiKeyFromConfig(useRuntimeConfig(event))
 
-  const response = await $fetch<OpenRouterModelsResponse>('/models', {
-    baseURL: OPENROUTER_OPENAI_BASE_URL,
-    headers: {
-      Authorization: `Bearer ${apiKey}`
-    },
-    query: {
-      output_modalities: 'text'
-    }
-  })
+  return openRouterModelsCache.get('openrouter:models', async () => {
+    const response = await $fetch<OpenRouterModelsResponse>('/models', {
+      baseURL: OPENROUTER_OPENAI_BASE_URL,
+      headers: {
+        Authorization: `Bearer ${apiKey}`
+      },
+      query: {
+        output_modalities: 'text'
+      }
+    })
 
-  return (response.data ?? [])
-    .map(model => ({
-      ...model,
-      id: typeof model.id === 'string' ? model.id.trim() : '',
-      name: typeof model.name === 'string' ? model.name.trim() : undefined
-    }))
-    .filter(isAvailableTextModel)
+    return (response.data ?? [])
+      .map(model => ({
+        ...model,
+        id: typeof model.id === 'string' ? model.id.trim() : '',
+        name: typeof model.name === 'string' ? model.name.trim() : undefined
+      }))
+      .filter(isAvailableTextModel)
+  })
 }
 
 /**

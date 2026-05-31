@@ -1,3 +1,11 @@
+<!--
+  AILoadingState.vue - Lightweight streaming status indicator
+  Shows a spinning loader icon with a text message and animated ellipsis.
+  Used inside `AIStreamingRewrite` to display the current inline AI
+  rewrite status without taking up significant space.
+
+  @prop message - Status line text displayed next to the spinner
+-->
 <script setup lang="ts">
 defineProps<{
   message: string

@@ -1,3 +1,12 @@
+/**
+ * Chat Session — POST /api/chats/:id/stream
+ *
+ * Streams an AI response for a chat message, handling message generation,
+ * tool calls (Chart, Weather), and document context injection.
+ *
+ * @module server/api/chats
+ */
+
 import type { LanguageModelUsage, UIMessage } from 'ai'
 import {
   convertToModelMessages,

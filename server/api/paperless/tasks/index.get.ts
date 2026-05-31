@@ -5,6 +5,8 @@ import type { PaperlessTask } from '~~/shared/types/paperless'
  *
  * Lists background tasks from Paperless-ngx (e.g., document consumption,
  * OCR processing). Supports optional pagination and ordering.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async event => {
   const query = getQuery(event)
@@ -19,10 +21,6 @@ export default defineEventHandler(async event => {
       })
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 500,
-      statusMessage: err?.statusMessage || 'Failed to fetch tasks'
-    })
+    handlePaperlessError(error, 'Failed to fetch tasks', 500)
   }
 })

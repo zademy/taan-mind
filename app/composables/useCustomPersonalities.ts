@@ -13,6 +13,8 @@ export interface CustomPersonalityPayload {
  *
  * Built-in personalities are intentionally excluded from this API.
  * They live in shared code and cannot be edited from settings.
+ *
+ * @module app/composables
  */
 export function useCustomPersonalities() {
   const { csrf, headerName } = useCsrf()

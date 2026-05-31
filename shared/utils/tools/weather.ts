@@ -8,6 +8,8 @@ export type WeatherUIToolInvocation = UIToolInvocation<typeof weatherTool>
 /**
  * Maps a weather condition key to its display text and Lucide icon.
  * Falls back to 'Sunny' for unknown conditions.
+ *
+ * @module shared/utils
  */
 const getWeatherData = (k: string) =>
   ({

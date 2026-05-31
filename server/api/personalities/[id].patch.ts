@@ -1,3 +1,12 @@
+/**
+ * Update Custom Personality — PATCH /api/personalities/:id
+ *
+ * Updates a custom personality owned by the current user.
+ * Built-in personalities are not stored here and cannot be edited.
+ *
+ * @module server/api/personalities
+ */
+
 import { db, schema } from 'hub:db'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'

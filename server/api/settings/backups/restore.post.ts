@@ -11,6 +11,8 @@ import {
  * Restores a logical ZIP backup into the current deployment without importing
  * Better Auth users, accounts, sessions, or verification records. Every
  * user-owned row is reassigned to the currently authenticated admin.
+ *
+ * @module server/api/settings
  */
 export default defineEventHandler(async (event): Promise<LogicalBackupRestoreResult> => {
   const admin = await requireAdminSession(event)

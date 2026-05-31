@@ -1,3 +1,14 @@
+/**
+ * AI Model Selection Composable
+ *
+ * Manages the current AI model selection with cookie persistence.
+ * Loads both static catalog models and runtime-discovered Ollama/OpenRouter
+ * models. Automatically falls back to the default model when the stored
+ * value is unavailable or invalid.
+ *
+ * @module app/composables
+ */
+
 import type { ModelId, ModelsResponse } from '#shared/utils/models'
 import { DEFAULT_MODEL, MODELS, isSelectableModel } from '#shared/utils/models'
 

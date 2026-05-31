@@ -1,3 +1,22 @@
+/**
+ * Inline AI Assistant — Streaming Rewrite Endpoint
+ *
+ * Receives an inline AI action (rewrite, summarize, document intelligence, etc.)
+ * and streams back an AI-generated text transformation via the AI SDK `streamText`.
+ *
+ * Pipeline:
+ *   1. Validate CSRF and authenticate the user
+ *   2. Validate action ID, model ID, and text length (max {@link INLINE_AI_MAX_INPUT_CHARACTERS})
+ *   3. Optionally resolve up to {@link MAX_CHAT_DOCUMENTS} Paperless documents as context
+ *   4. Build the system prompt and action prompt from {@link inlineAssistant} utilities
+ *   5. Stream the model's text response with `smoothStream` transformation
+ *   6. Log token usage on finish
+ *
+ * The response is a raw text stream (`text/event-stream` or `application/octet-stream`),
+ * consumed by {@link useInlineAIRewrite} in the UI.
+ *
+ * @module server/api/ai
+ */
 import { smoothStream, streamText } from 'ai'
 import { z } from 'zod'
 import { INLINE_AI_MAX_INPUT_CHARACTERS, isInlineAIActionId } from '#shared/utils/inlineAi'
@@ -27,6 +46,15 @@ defineRouteMeta({
   }
 })
 
+/**
+ * Request body schema for the inline assistant endpoint.
+ *
+ * Fields:
+ *   - `model`      — must pass {@link isSelectableModel}
+ *   - `action`     — must pass {@link isInlineAIActionId}
+ *   - `text`       — trimmed, 1..MAX characters
+ *   - `documentIds` — optional array of cached Paperless doc IDs (max MAX_CHAT_DOCUMENTS)
+ */
 const inlineAssistantBodySchema = z.object({
   model: z.string().refine(isSelectableModel, {
     message: 'Invalid model'

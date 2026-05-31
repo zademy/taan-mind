@@ -1,3 +1,12 @@
+/**
+ * List Projects — GET /api/projects
+ *
+ * Returns all projects owned by the current user for the Taanwork sidebar.
+ * Each project includes a lightweight preview of its three most recent chats.
+ *
+ * @module server/api/projects
+ */
+
 import { db, schema } from 'hub:db'
 import { and, desc, eq, isNotNull, sql } from 'drizzle-orm'
 

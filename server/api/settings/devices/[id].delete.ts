@@ -14,6 +14,8 @@ import { z } from 'zod'
  * @errors
  * - 400 — Attempting to delete the current device session.
  * - 404 — No session found with the given ID belonging to this user.
+ *
+ * @module server/api/settings
  */
 export default defineEventHandler(async event => {
   const authSession = await requireAuthSession(event)

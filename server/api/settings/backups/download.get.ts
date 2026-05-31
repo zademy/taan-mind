@@ -1,3 +1,13 @@
+/**
+ * Download Logical Backup — GET /api/settings/backups/download
+ *
+ * Builds a logical ZIP backup from app-owned data only.
+ * Auth tables (user, account, session, verification) are excluded so
+ * credentials and sessions stay tied to the current deployment.
+ *
+ * @module server/api/settings
+ */
+
 import { z } from 'zod'
 import { LOGICAL_BACKUP_MIME_TYPE } from '#shared/utils/backups'
 

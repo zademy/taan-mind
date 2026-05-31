@@ -1,3 +1,20 @@
+<!--
+  AIStreamingRewrite.vue - Side-by-side original vs AI draft comparison card
+  Displays the inline rewrite result as a two-column diff (Original / AI draft)
+  with Accept / Retry / Cancel actions. Manages loading and error states
+  for the streaming rewrite lifecycle managed by `InlineAssistant`.
+
+  @prop actionLabel - Display name of the active action (e.g. "Improve writing")
+  @prop status      - Current rewrite lifecycle status (idle / streaming / ready / error)
+  @prop original   - The user's original input text before the AI rewrite
+  @prop draft       - The streamed AI rewrite output (updated in real-time)
+  @prop loadingMessage - Status line shown during active streaming
+  @prop error       - Error message string when status is 'error'
+
+  @emits accept - User confirmed the draft, parent applies it to the prompt input
+  @emits retry - User wants to re-run the same action with the same original text
+  @emits cancel - User aborted the rewrite, draft is discarded
+-->
 <script setup lang="ts">
 import type { InlineAIRewriteStatus } from '~/composables/useInlineAIRewrite'
 import AILoadingState from './AILoadingState.vue'

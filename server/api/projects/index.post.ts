@@ -9,6 +9,8 @@ const MAX_PROJECT_NAME_LENGTH = 80
  *
  * Creates a project and an empty starter chat so the user can begin working
  * inside the project immediately.
+ *
+ * @module server/api/projects
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

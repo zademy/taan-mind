@@ -1,3 +1,11 @@
+/**
+ * Paperless Document Types — GET /api/paperless/document-types
+ *
+ * Lists all document types from Paperless-ngx with pagination and ordering.
+ *
+ * @module server/api/paperless
+ */
+
 import type { PaperlessDocumentType, PaperlessPaginatedResponse } from '~~/shared/types/paperless'
 import { z } from 'zod'
 
@@ -26,11 +34,7 @@ export default defineEventHandler(
         query: buildPaperlessQuery(query)
       })
     } catch (error: unknown) {
-      const err = error as { statusCode?: number; statusMessage?: string }
-      throw createError({
-        statusCode: err?.statusCode || 502,
-        statusMessage: err?.statusMessage || 'Failed to fetch document types from Paperless'
-      })
+      handlePaperlessError(error, 'Failed to fetch document types from Paperless')
     }
   }
 )

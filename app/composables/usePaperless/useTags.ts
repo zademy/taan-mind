@@ -17,6 +17,8 @@ interface TagListOptions {
  *
  * @param options - Pagination, ordering, and fetch-mode options.
  * @returns A `useFetch` / `useLazyFetch` result with the paginated tag list.
+ *
+ * @module app/composables
  */
 export function useTags(options: TagListOptions = {}) {
   const { page = 1, pageSize = 25, ordering = 'name', lazy = false } = options

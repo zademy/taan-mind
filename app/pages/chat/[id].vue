@@ -420,7 +420,7 @@ async function regenerateMessage(message: UIMessage) {
 
             <!-- Bottom toolbar: model/personality selectors and action buttons -->
             <template #footer>
-              <div class="flex min-w-0 flex-col gap-3">
+              <div class="flex w-full min-w-0 flex-col gap-3">
                 <AiInlineAssistant
                   v-model="input"
                   :model="model"

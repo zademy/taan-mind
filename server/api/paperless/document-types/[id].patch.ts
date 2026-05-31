@@ -11,6 +11,8 @@ const bodySchema = z.object({
  *
  * Updates an existing document type in Paperless-ngx.
  * Only the `name` field can be modified via this endpoint.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessDocumentType> => {
   const { id } = await getValidatedRouterParams(
@@ -26,10 +28,6 @@ export default defineEventHandler(async (event): Promise<PaperlessDocumentType> 
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to update document type ${id} in Paperless`
-    })
+    handlePaperlessError(error, `Failed to update document type ${id} in Paperless`)
   }
 })

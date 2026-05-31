@@ -10,6 +10,7 @@
 
 import { db, schema } from 'hub:db'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { ProcessingStatus } from '#shared/utils/processingStatus'
 
 /** Maximum number of Paperless documents that can be attached to a single chat. */
 export const MAX_CHAT_DOCUMENTS = 5
@@ -90,7 +91,13 @@ export async function assertChatDocumentsAvailable(documentIds: number[]) {
   const rows = await db
     .select({ id: t.id })
     .from(t)
-    .where(and(inArray(t.id, documentIds), eq(t.processed, 1), isNull(t.deletedAt)))
+    .where(
+      and(
+        inArray(t.id, documentIds),
+        eq(t.processed, ProcessingStatus.Processed),
+        isNull(t.deletedAt)
+      )
+    )
 
   if (rows.length !== documentIds.length) {
     throw createError({

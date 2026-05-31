@@ -6,6 +6,8 @@ import type { PaperlessPaginatedResponse, PaperlessTask } from '~~/shared/types/
  * Uses `useLazyFetch` so the request does not block navigation.
  *
  * @returns A `useLazyFetch` result with the paginated task list.
+ *
+ * @module app/composables
  */
 export function usePaperlessTasks() {
   return useLazyFetch<PaperlessPaginatedResponse<PaperlessTask>>('/api/paperless/tasks')

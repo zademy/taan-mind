@@ -4,6 +4,20 @@
   Creates, copies, rotates, and revokes a live read-only share link for the
   current chat. The public URL is intentionally token-based and separate from
   the internal chat route.
+
+  @prop chatId - The UUID of the chat to manage sharing for (owner-only operations)
+
+  @section Share Lifecycle
+    createShare  — POST /api/chats/:id/share, stores token + returns URL
+    copyShareLink — writes activeShare.url to clipboard
+    rotateShare  — PATCH /api/chats/:id/share, revokes old token, generates new one
+    revokeShare  — DELETE /api/chats/:id/share, marks token inactive
+    loadShare    — GET /api/chats/:id/share, fetches current share state into `share` ref
+
+  @section UX
+  The modal shows loading skeletons while fetching share state. Rotating
+  automatically copies the new URL. Revoking shows a success toast and
+  clears the share URL from the UI.
 -->
 <script setup lang="ts">
 type ChatShare = {

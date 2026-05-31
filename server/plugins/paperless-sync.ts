@@ -1,6 +1,36 @@
+/**
+ * Paperless Sync Plugin
+ *
+ * Background plugin that periodically fetches all documents from
+ * Paperless-ngx and upserts them into the local SQLite cache.
+ *
+ * Runs every `NUXT_SYNC_INTERVAL_MS` milliseconds (default 5s).
+ * Processes documents in pages of 100. Preserves the `processed` flag
+ * on existing rows so enrichment state is not lost.
+ *
+ * @module server/plugins
+ */
+
 import { consola } from 'consola'
-import { isNull } from 'drizzle-orm'
+import { isNull, sql } from 'drizzle-orm'
 import type { PaperlessDocument, PaperlessPaginatedResponse } from '~~/shared/types/paperless'
+import { ProcessingStatus } from '#shared/utils/processingStatus'
+
+const excluded = (columnName: string) => sql.raw(`excluded.${columnName}`)
+
+const toPaperlessDocumentRow = (doc: PaperlessDocument) => ({
+  id: doc.id,
+  title: doc.title,
+  correspondent: doc.correspondent,
+  documentType: doc.document_type,
+  storagePath: doc.storage_path,
+  originalFileName: doc.original_file_name,
+  mimeType: doc.mime_type,
+  pageCount: doc.page_count,
+  processed: ProcessingStatus.Pending,
+  paperlessCreated: doc.created ? new Date(doc.created) : null,
+  paperlessModified: doc.modified ? new Date(doc.modified) : null
+})
 
 /**
  * Nitro plugin that periodically syncs Paperless-ngx documents into the local SQLite cache.
@@ -20,14 +50,12 @@ export default defineNitroPlugin(nitroApp => {
     const config = useRuntimeConfig()
     const intervalMs = Number(config.syncIntervalMs) || 5000
 
-    const baseUrl = config.paperlessBaseUrl?.replace(/\/+$/, '')
-    const token = config.paperlessApiToken
-    if (!baseUrl || !token) {
-      consola.warn(
-        '[Paperless Sync] Not configured (NUXT_PAPERLESS_BASE_URL or NUXT_PAPERLESS_API_TOKEN is missing)'
-      )
+    const paperlessConfig = getOptionalPaperlessConfig()
+    if (!paperlessConfig) {
+      consola.warn(`[Paperless Sync] Not configured (${PAPERLESS_CONFIG_MISSING_MESSAGE})`)
       return
     }
+    const { apiBaseUrl, jsonHeaders } = paperlessConfig
 
     consola.info(`[Paperless Sync] Starting synchronization every ${intervalMs}ms`)
 
@@ -43,46 +71,32 @@ export default defineNitroPlugin(nitroApp => {
 
         while (hasMore) {
           const response = await $fetch<PaperlessPaginatedResponse<PaperlessDocument>>(
-            `${baseUrl}/api/documents/`,
+            `${apiBaseUrl}/documents/`,
             {
-              headers: {
-                Authorization: `Token ${token}`,
-                Accept: 'application/json; version=5'
-              },
+              headers: jsonHeaders,
               query: { page, page_size: 100 }
             }
           )
 
           const docs = response.results || []
+          const documentRows = docs.map(toPaperlessDocumentRow)
 
-          for (const doc of docs) {
+          if (documentRows.length > 0) {
             await db
               .insert(schema.paperlessDocuments)
-              .values({
-                id: doc.id,
-                title: doc.title,
-                correspondent: doc.correspondent,
-                documentType: doc.document_type,
-                storagePath: doc.storage_path,
-                originalFileName: doc.original_file_name,
-                mimeType: doc.mime_type,
-                pageCount: doc.page_count,
-                processed: 0,
-                paperlessCreated: doc.created ? new Date(doc.created) : null,
-                paperlessModified: doc.modified ? new Date(doc.modified) : null
-              })
+              .values(documentRows)
               .onConflictDoUpdate({
                 target: schema.paperlessDocuments.id,
                 set: {
-                  title: doc.title,
-                  correspondent: doc.correspondent,
-                  documentType: doc.document_type,
-                  storagePath: doc.storage_path,
-                  originalFileName: doc.original_file_name,
-                  mimeType: doc.mime_type,
-                  pageCount: doc.page_count,
-                  paperlessCreated: doc.created ? new Date(doc.created) : null,
-                  paperlessModified: doc.modified ? new Date(doc.modified) : null,
+                  title: excluded('title'),
+                  correspondent: excluded('correspondent'),
+                  documentType: excluded('document_type'),
+                  storagePath: excluded('storage_path'),
+                  originalFileName: excluded('original_file_name'),
+                  mimeType: excluded('mime_type'),
+                  pageCount: excluded('page_count'),
+                  paperlessCreated: excluded('paperless_created'),
+                  paperlessModified: excluded('paperless_modified'),
                   updatedAt: new Date()
                 },
                 setWhere: isNull(schema.paperlessDocuments.deletedAt)

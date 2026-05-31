@@ -29,7 +29,7 @@
     "@nuxt/image": "^2.0.0",
     "@nuxt/ui": "^4.6.1",
     "@nuxthub/core": "^0.10.7",
-    "@nuxtjs/i18n": "10.3.0",
+    "@nuxtjs/i18n": "10.4.0",
     "@openrouter/sdk": "^0.12.24",
     "@shikijs/langs": "^4.0.2",
     "@vueuse/core": "^14.2.1",

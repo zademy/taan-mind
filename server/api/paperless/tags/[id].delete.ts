@@ -4,6 +4,8 @@ import { z } from 'zod'
  * DELETE /api/paperless/tags/:id
  *
  * Deletes a tag from Paperless-ngx.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<void> => {
   const { id } = await getValidatedRouterParams(
@@ -15,10 +17,6 @@ export default defineEventHandler(async (event): Promise<void> => {
   try {
     await client(`/tags/${id}/`, { method: 'DELETE' })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to delete tag ${id} from Paperless`
-    })
+    handlePaperlessError(error, `Failed to delete tag ${id} from Paperless`)
   }
 })

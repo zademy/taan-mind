@@ -1,3 +1,15 @@
+/**
+ * Document Processing Settings Composable
+ *
+ * Fetches the global AI enrichment model used by the background document
+ * processor, and provides a typed update function to change it.
+ *
+ * The available model list is fetched from `/api/models?scope=document-processing`
+ * with a static fallback so the UI always has options even before the API responds.
+ *
+ * @module app/composables
+ */
+
 import type {
   DocumentProcessingSettings,
   DocumentProcessingSettingsPayload,

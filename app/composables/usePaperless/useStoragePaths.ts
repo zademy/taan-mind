@@ -19,6 +19,8 @@ interface StoragePathListOptions {
  *
  * @param options - Pagination, ordering, and fetch-mode options.
  * @returns A `useFetch` / `useLazyFetch` result with the paginated storage-path list.
+ *
+ * @module app/composables
  */
 export function useStoragePaths(options: StoragePathListOptions = {}) {
   const query = computed(() => ({

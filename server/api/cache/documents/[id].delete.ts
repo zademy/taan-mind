@@ -6,6 +6,8 @@ import { eq } from 'drizzle-orm'
  *
  * Soft-deletes a document from the local SQLite cache by setting `deletedAt`.
  * This does not affect the document in Paperless-ngx.
+ *
+ * @module server/api/cache
  */
 export default defineEventHandler(async event => {
   const id = getRouterParam(event, 'id')

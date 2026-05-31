@@ -139,6 +139,11 @@ services:
       start_period: 30s
       retries: 3
 
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
     # The app needs to communicate with Paperless-ngx (paperless_frontend)
     # and has its own isolated network (app).
     networks:
@@ -149,7 +154,7 @@ services:
   # Redis is used by Paperless-ngx as a message broker for background tasks
   # (e.g., document OCR processing, classification, and consumption).
   broker:
-    image: docker.io/library/redis:8.6.2
+    image: docker.io/library/redis:8.8.0
     restart: unless-stopped
     labels:
       com.paperlessia.project: 'paperless-ia'
@@ -157,7 +162,22 @@ services:
       com.paperlessia.role: 'redis-cache-queue'
     # Persistence: save to disk every 60 seconds if at least 1 key changed.
     # Log level: warning to reduce noise in container logs.
-    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
+    # maxmemory: cap Redis at 256MB to prevent unbounded growth.
+    # maxmemory-policy: evict least-recently-used keys when memory is full
+    #   (safe for a task broker — completed tasks are already consumed).
+    command:
+      [
+        'redis-server',
+        '--save',
+        '60',
+        '1',
+        '--loglevel',
+        'warning',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'allkeys-lru'
+      ]
     volumes:
       - paperlessia_redisdata:/data
     healthcheck:
@@ -165,6 +185,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384M
     networks:
       - paperless_backend
 
@@ -172,7 +196,7 @@ services:
   # PostgreSQL database for Paperless-ngx. Stores document metadata, user
   # accounts, classification labels, and application state.
   db:
-    image: docker.io/library/postgres:18.3
+    image: docker.io/library/postgres:18.4
     restart: unless-stopped
     labels:
       com.paperlessia.project: 'paperless-ia'
@@ -196,6 +220,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     networks:
       - paperless_backend
 
@@ -244,6 +272,12 @@ services:
       PAPERLESS_TIKA_ENABLED: 1
       PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
       PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+      # Task workers: parallel document processing (2 workers for 8GB host).
+      PAPERLESS_TASK_WORKERS: 2
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
     volumes:
       # Persistent data volumes for Paperless-ngx:
       #   data   — Configuration, search index, and classification models.
@@ -340,7 +374,7 @@ services:
   # documents to PDF. Used by Paperless-ngx for document normalization
   # before OCR processing.
   gotenberg:
-    image: docker.io/gotenberg/gotenberg:8.31.0
+    image: docker.io/gotenberg/gotenberg:8.33.0
     restart: unless-stopped
     labels:
       com.paperlessia.project: 'paperless-ia'
@@ -355,6 +389,18 @@ services:
       - '--chromium-allow-list=file:///tmp/.*'
       # Increase API timeout for large or complex document conversions.
       - '--api-timeout=60s'
+      # Limit concurrent Chromium instances to prevent memory spikes.
+      - '--chromium-max-queue-size=8'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
     networks:
       - paperless_backend
 
@@ -363,12 +409,26 @@ services:
   # Used by Paperless-ngx to extract text from various file formats
   # (PDF, Word, Excel, PowerPoint, images, etc.) for indexing and search.
   tika:
-    image: docker.io/apache/tika:3.3.0.0
+    image: docker.io/apache/tika:3.3.1.0
     restart: unless-stopped
     labels:
       com.paperlessia.project: 'paperless-ia'
       com.paperlessia.service: 'tika'
       com.paperlessia.role: 'document-text-extraction'
+    # JVM tuning: allocate 768MB heap for document parsing (text extraction
+    # for all doc types: Word, Excel, PPT, PDF, images).
+    environment:
+      JAVA_OPTS: '-Xmx768m -Xms256m'
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c "echo > /dev/tcp/localhost/9998" || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     networks:
       - paperless_backend
 

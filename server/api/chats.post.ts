@@ -1,3 +1,13 @@
+/**
+ * Create Chat — POST /api/chats
+ *
+ * Creates a new chat with the first user message, or returns the existing chat
+ * if a chat with the same client-generated ID already exists.
+ * Idempotent — safe to call on page reload or retry.
+ *
+ * @module server/api/chats
+ */
+
 import type { UIMessage } from 'ai'
 import { db, schema } from 'hub:db'
 import { z } from 'zod'

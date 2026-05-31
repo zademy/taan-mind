@@ -4,6 +4,8 @@ import { z } from 'zod'
  * DELETE /api/paperless/documents/:id
  *
  * Deletes a document by ID.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async event => {
   const { id } = await getValidatedRouterParams(
@@ -19,10 +21,6 @@ export default defineEventHandler(async event => {
     await client(`/documents/${id}/`, { method: 'DELETE' })
     return { success: true }
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to delete document from Paperless'
-    })
+    handlePaperlessError(error, 'Failed to delete document from Paperless')
   }
 })

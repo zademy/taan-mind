@@ -27,6 +27,7 @@ import {
   OPENROUTER_OPENAI_BASE_URL,
   type OpenRouterRuntimeConfig
 } from './openrouter'
+import { stripTrailingSlash } from './url'
 
 /** Supported AI model provider names. */
 type ProviderName = ModelProvider
@@ -174,7 +175,7 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
     const glm = createOpenAICompatible({
       name: 'glm',
       apiKey: requireRuntimeSecret(config.glmApiKey, 'GLM API key'),
-      baseURL: requireRuntimeSecret(config.glmBaseUrl, 'GLM base URL').replace(/\/+$/, ''),
+      baseURL: stripTrailingSlash(requireRuntimeSecret(config.glmBaseUrl, 'GLM base URL')),
       headers: {
         'Accept-Language': 'en-US,en'
       }
@@ -203,11 +204,9 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
         getRuntimeString(config.novaApiKey) ?? process.env.NOVA_API_KEY,
         'Nova API key'
       ),
-      baseURL: (
-        getRuntimeString(config.novaBaseUrl) ??
-        process.env.NOVA_BASE_URL ??
-        DEFAULT_NOVA_BASE_URL
-      ).replace(/\/+$/, '')
+      baseURL: stripTrailingSlash(
+        getRuntimeString(config.novaBaseUrl) ?? process.env.NOVA_BASE_URL ?? DEFAULT_NOVA_BASE_URL
+      )
     })
 
     return nova(modelId)

@@ -5,6 +5,8 @@ import { z } from 'zod'
  * PATCH /api/paperless/documents/:id
  *
  * Updates a document's metadata.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async event => {
   const { id } = await getValidatedRouterParams(
@@ -51,10 +53,6 @@ export default defineEventHandler(async event => {
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to update document in Paperless'
-    })
+    handlePaperlessError(error, 'Failed to update document in Paperless')
   }
 })

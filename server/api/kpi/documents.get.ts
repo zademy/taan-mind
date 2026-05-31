@@ -1,22 +1,13 @@
 import { db, schema } from 'hub:db'
 import { count, sql, desc, isNull } from 'drizzle-orm'
-
-/**
- * Maps processing status codes to human-readable labels.
- * - `0` → Pending (not yet processed)
- * - `1` → Processed (successfully completed)
- * - `2` → Processing (currently in progress)
- */
-const STATUS_LABELS: Record<number, string> = {
-  0: 'Pending',
-  1: 'Processed',
-  2: 'Processing'
-}
+import { PROCESSING_STATUS_LABELS, type ProcessingStatus } from '#shared/utils/processingStatus'
 
 /**
  * GET /api/kpi/documents
  *
  * Returns aggregated KPI metrics for cached Paperless documents.
+ *
+ * @module server/api/kpi
  */
 export default defineEventHandler(async () => {
   const t = schema.paperlessDocuments
@@ -58,7 +49,7 @@ export default defineEventHandler(async () => {
   return {
     total: totalRow?.value || 0,
     byStatus: statusRows.map(r => ({
-      label: STATUS_LABELS[r.status] ?? `Unknown (${r.status})`,
+      label: PROCESSING_STATUS_LABELS[r.status as ProcessingStatus] ?? `Unknown (${r.status})`,
       value: r.value
     })),
     byMimeType: mimeRows.map(r => ({

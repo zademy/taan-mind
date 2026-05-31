@@ -1,3 +1,12 @@
+/**
+ * Paperless Tags — PATCH /api/paperless/tags/:id
+ *
+ * Updates an existing tag in Paperless-ngx.
+ * Supports partial updates via optional body fields.
+ *
+ * @module server/api/paperless
+ */
+
 import type { PaperlessTag } from '~~/shared/types/paperless'
 import { z } from 'zod'
 
@@ -29,10 +38,6 @@ export default defineEventHandler(async (event): Promise<PaperlessTag> => {
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to update tag ${id} in Paperless`
-    })
+    handlePaperlessError(error, `Failed to update tag ${id} in Paperless`)
   }
 })

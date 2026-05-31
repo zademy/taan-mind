@@ -5,6 +5,8 @@ import type { PaperlessPaginatedResponse, PaperlessStoragePath } from '~~/shared
  *
  * Lists all storage paths from Paperless-ngx with optional
  * pagination and ordering.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async event => {
   const query = getQuery(event)
@@ -19,10 +21,6 @@ export default defineEventHandler(async event => {
       })
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 500,
-      statusMessage: err?.statusMessage || 'Failed to fetch storage paths'
-    })
+    handlePaperlessError(error, 'Failed to fetch storage paths', 500)
   }
 })
