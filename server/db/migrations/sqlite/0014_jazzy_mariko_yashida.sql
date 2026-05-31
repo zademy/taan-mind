@@ -1,0 +1,1 @@
+ALTER TABLE `paperless_documents` ADD `processing_attempts` integer DEFAULT 0 NOT NULL;

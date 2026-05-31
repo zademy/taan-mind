@@ -133,6 +133,7 @@ function initChat() {
     /** Listen for server-sent data parts (e.g., chat title updates) */
     onData: dataPart => {
       if (dataPart.type === 'data-chat-title') {
+        void refreshChat()
         refreshNuxtData('chats')
         refreshNuxtData('projects')
       }
@@ -237,6 +238,17 @@ const latestMessageId = computed(
 
 /** Computed flag indicating whether the user can submit a new message */
 const canSubmit = computed(() => input.value.trim().length > 0 && chat.value?.status === 'ready')
+
+async function handleChatRenamed(title: string) {
+  if (data.value) {
+    data.value = {
+      ...data.value,
+      title
+    }
+  }
+
+  await Promise.all([refreshChat(), refreshNuxtData('chats'), refreshNuxtData('projects')])
+}
 
 /**
  * Handles form submission: sends the user's message and clears the input.
@@ -370,7 +382,16 @@ async function regenerateMessage(message: UIMessage) {
       :ui="{ body: 'p-0 sm:p-0 overscroll-none' }"
     >
       <template #header>
-        <Navbar>
+        <Navbar :floating="false">
+          <template #title>
+            <ChatTitleEditor
+              :chat-id="data.id"
+              :title="data.title"
+              :editable="isOwner"
+              @renamed="handleChatRenamed"
+            />
+          </template>
+
           <ChatShareButton v-if="isOwner" :chat-id="data.id" />
         </Navbar>
       </template>
@@ -386,7 +407,7 @@ async function regenerateMessage(message: UIMessage) {
             :show-actions="isOwner"
             :spacing-offset="isOwner ? 160 : 0"
             :reset-key="data.id"
-            messages-class="pt-(--ui-header-height) pb-4 sm:pb-6"
+            messages-class="pb-4 sm:pb-6"
             @edit="startEdit"
             @regenerate="regenerateMessage"
             @save="saveEdit"

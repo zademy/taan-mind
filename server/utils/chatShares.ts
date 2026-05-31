@@ -7,9 +7,13 @@
  */
 import type { H3Event } from 'h3'
 import { getRequestURL } from 'h3'
-import type { UIMessage } from 'ai'
 import { db, schema } from 'hub:db'
 import { and, asc, eq } from 'drizzle-orm'
+import type {
+  ChatShareResponse,
+  PublicSharedChatMessage,
+  PublicSharedChatResponse
+} from '~~/shared/types/chatShares'
 import { generateChatShareToken } from './shareTokens'
 
 /** Drizzle row type for the `chat_shares` table. */
@@ -20,47 +24,6 @@ type ChatRecord = typeof schema.chats.$inferSelect
 
 /** Drizzle row type for the `messages` table. */
 type MessageRecord = typeof schema.messages.$inferSelect
-
-/**
- * Owner-facing share-link representation returned by all share API routes.
- * Contains the public URL and current status of the share.
- */
-export type ChatShareResponse = {
-  /** Opaque URL-safe token identifying the share link. */
-  token: string
-  /** Relative path to the shared chat page (e.g. `/share/chat/<token>`). */
-  path: string
-  /** Absolute public URL built from the current request origin. */
-  url: string
-  /** Whether the share link is currently active and accessible. */
-  isActive: boolean
-  /** Share mode — currently only `'live'` is supported. */
-  mode: 'live'
-  /** When the share link was first created. */
-  createdAt: Date
-  /** Optional expiry timestamp; `null` means the link never expires. */
-  expiresAt: Date | null
-  /** When the share was revoked; `null` if still active. */
-  revokedAt: Date | null
-}
-
-/**
- * Public-facing representation of a shared chat returned by the
- * `GET /api/shared-chats/:token` endpoint. Contains only the data
- * that an anonymous visitor should see — no internal IDs or owner info.
- */
-export type PublicSharedChatResponse = {
-  /** Chat title displayed on the shared page. */
-  title: string
-  /** Non-system messages ordered chronologically, with filtered parts. */
-  messages: Array<Pick<UIMessage, 'id' | 'role' | 'parts'> & { createdAt: Date }>
-  /** When the share link was originally created. */
-  sharedAt: Date
-  /** Timestamp of the most recent message, or chat creation as fallback. */
-  updatedAt: Date
-  /** Indicates the share reflects the live chat state. */
-  isLive: true
-}
 
 /** Loads a chat only when it belongs to the current session owner. */
 export async function getOwnedChatOrThrow(chatId: string, userId: string) {
@@ -200,8 +163,8 @@ export async function getPublicSharedChatOrThrow(token: string): Promise<PublicS
   return {
     title: chat.title?.trim() || 'Shared chat',
     messages,
-    sharedAt: share.createdAt,
-    updatedAt: getLatestMessageDate(messages, chat.createdAt),
+    sharedAt: toIsoDateString(share.createdAt),
+    updatedAt: toIsoDateString(getLatestMessageDate(messages, chat.createdAt)),
     isLive: true
   }
 }
@@ -219,9 +182,9 @@ function toChatShareResponse(event: H3Event, share: ChatShareRecord): ChatShareR
     url: new URL(path, getRequestURL(event).origin).toString(),
     isActive: share.active,
     mode: share.mode,
-    createdAt: share.createdAt,
-    expiresAt: share.expiresAt,
-    revokedAt: share.revokedAt
+    createdAt: toIsoDateString(share.createdAt),
+    expiresAt: share.expiresAt ? toIsoDateString(share.expiresAt) : null,
+    revokedAt: share.revokedAt ? toIsoDateString(share.revokedAt) : null
   }
 }
 
@@ -256,14 +219,12 @@ function isExpired(share: ChatShareRecord) {
  * Maps a raw message row to the public shape, filtering out internal
  * part types (reasoning, step-start, data-*) that should not be exposed.
  */
-function toPublicMessage(
-  message: MessageRecord
-): Pick<UIMessage, 'id' | 'role' | 'parts'> & { createdAt: Date } {
+function toPublicMessage(message: MessageRecord): PublicSharedChatMessage {
   return {
     id: message.id,
-    role: message.role as UIMessage['role'],
+    role: message.role,
     parts: getPublicMessageParts(message.parts),
-    createdAt: message.createdAt
+    createdAt: toIsoDateString(message.createdAt)
   }
 }
 
@@ -283,9 +244,14 @@ function getPublicMessageParts(parts: unknown) {
 }
 
 /** Reduces a message list to the single most-recent `createdAt` timestamp. */
-function getLatestMessageDate(messages: Array<{ createdAt: Date }>, fallback: Date) {
-  return messages.reduce(
-    (latest, message) => (message.createdAt > latest ? message.createdAt : latest),
-    fallback
-  )
+function getLatestMessageDate(messages: Array<{ createdAt: string | Date }>, fallback: Date) {
+  return messages.reduce((latest, message) => {
+    const createdAt = new Date(message.createdAt)
+    return createdAt > latest ? createdAt : latest
+  }, fallback)
+}
+
+/** Serializes Date values explicitly before they cross API boundaries. */
+function toIsoDateString(value: Date) {
+  return value.toISOString()
 }

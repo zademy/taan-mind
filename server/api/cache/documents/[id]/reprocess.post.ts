@@ -35,6 +35,7 @@ export default defineEventHandler(async event => {
       aiContent: null,
       ocrMethod: null,
       processingModel: null,
+      processingAttempts: 0,
       processingStartedAt: null,
       processingCompletedAt: null,
       updatedAt: new Date()

@@ -13,7 +13,7 @@
  * @module server/api
  */
 
-import type { H3Event } from 'h3'
+import { setResponseHeader, type H3Event } from 'h3'
 import type { ModelId, ModelOption, ModelsResponse } from '#shared/utils/models'
 import {
   DOCUMENT_PROCESSING_MODELS,
@@ -23,6 +23,12 @@ import {
 } from '#shared/utils/models'
 import { listOllamaModels } from '../utils/ollama'
 import { listOpenRouterModels, type OpenRouterModel } from '../utils/openrouter'
+import { MODEL_LIST_CACHE_TTL_MS, createTtlCache } from '../utils/modelListCache'
+
+type ModelsScope = 'chat' | 'document-processing'
+
+const MODEL_RESPONSE_CACHE_MAX_AGE_SECONDS = Math.floor(MODEL_LIST_CACHE_TTL_MS / 1000)
+const modelsResponseCache = createTtlCache<ModelsResponse>()
 
 /**
  * GET /api/models
@@ -33,7 +39,27 @@ import { listOpenRouterModels, type OpenRouterModel } from '../utils/openrouter'
  * OCR-only runtime models are intentionally excluded from this list.
  */
 export default defineEventHandler(async (event): Promise<ModelsResponse> => {
-  const scope = getQuery(event).scope === 'document-processing' ? 'document-processing' : 'chat'
+  const scope = getModelsScope(event)
+  const response = await modelsResponseCache.get(`models:${scope}`, () =>
+    buildModelsResponse(event, scope)
+  )
+
+  setResponseHeader(
+    event,
+    'Cache-Control',
+    `private, max-age=${MODEL_RESPONSE_CACHE_MAX_AGE_SECONDS}`
+  )
+
+  return {
+    models: response.models.map(model => ({ ...model }))
+  }
+})
+
+function getModelsScope(event: H3Event): ModelsScope {
+  return getQuery(event).scope === 'document-processing' ? 'document-processing' : 'chat'
+}
+
+async function buildModelsResponse(event: H3Event, scope: ModelsScope): Promise<ModelsResponse> {
   const staticModels = scope === 'document-processing' ? DOCUMENT_PROCESSING_MODELS : MODELS
   const [ollamaModels, openRouterModels] = await Promise.all([
     getAvailableOllamaModelOptions(event),
@@ -43,7 +69,7 @@ export default defineEventHandler(async (event): Promise<ModelsResponse> => {
   return {
     models: [...staticModels, ...ollamaModels, ...openRouterModels]
   }
-})
+}
 
 /**
  * Converts available Ollama models into UI model options.
