@@ -3,7 +3,7 @@
   Displays a paginated, filterable table of Paperless documents from the local
   SQLite cache. Features include:
   - Full-text search with debounced input (300ms)
-  - Filtering by processing status (Pending / Processing / Processed) and MIME type
+  - Filtering by processing status (Pending / Processing / Processed / Failed) and MIME type
   - Configurable page size and full pagination
   - Auto-refresh every 5 seconds for live status updates
   - Per-document reprocess action to reset OCR/AI processing
@@ -192,6 +192,10 @@ const statusOptions = [
   {
     label: PROCESSING_STATUS_LABELS[ProcessingStatus.Processing],
     value: String(ProcessingStatus.Processing)
+  },
+  {
+    label: PROCESSING_STATUS_LABELS[ProcessingStatus.Failed],
+    value: String(ProcessingStatus.Failed)
   }
 ]
 
@@ -339,6 +343,19 @@ function formatProcessingModel(model: CacheDocument['processingModel']): string 
   return model
 }
 
+function getProcessingStatusBadgeColor(status: ProcessingStatus) {
+  switch (status) {
+    case ProcessingStatus.Processed:
+      return 'success'
+    case ProcessingStatus.Failed:
+      return 'error'
+    case ProcessingStatus.Processing:
+      return 'warning'
+    default:
+      return 'neutral'
+  }
+}
+
 /** Table column definitions for the documents data table */
 const columns: TableColumn<CacheDocument>[] = [
   {
@@ -419,12 +436,10 @@ const columns: TableColumn<CacheDocument>[] = [
       }
     },
     cell: ({ row }) => {
-      const val = row.getValue('processed') as ProcessingStatus
-      const isProcessed = val === ProcessingStatus.Processed
-      const isProcessing = val === ProcessingStatus.Processing
+      const val = row.original.processed
       const label =
         PROCESSING_STATUS_LABELS[val] ?? PROCESSING_STATUS_LABELS[ProcessingStatus.Pending]
-      const color = isProcessed ? 'success' : isProcessing ? 'warning' : 'neutral'
+      const color = getProcessingStatusBadgeColor(val)
       return h(
         UBadge,
         {
@@ -435,6 +450,19 @@ const columns: TableColumn<CacheDocument>[] = [
         () => label
       )
     }
+  },
+  {
+    accessorKey: 'processingAttempts',
+    header: 'Attempts',
+    enableSorting: true,
+    meta: {
+      class: {
+        th: 'hidden lg:table-cell w-24',
+        td: 'hidden lg:table-cell w-24'
+      }
+    },
+    cell: ({ row }) =>
+      h('span', { class: 'text-sm text-muted' }, String(row.original.processingAttempts))
   },
   {
     accessorKey: 'processingModel',

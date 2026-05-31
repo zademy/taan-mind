@@ -4,12 +4,14 @@
 export enum ProcessingStatus {
   Pending = 0,
   Processed = 1,
-  Processing = 2
+  Processing = 2,
+  Failed = 3
 }
 
 /** Human-readable labels for document processing states. */
 export const PROCESSING_STATUS_LABELS: Record<ProcessingStatus, string> = {
   [ProcessingStatus.Pending]: 'Pending',
   [ProcessingStatus.Processed]: 'Processed',
-  [ProcessingStatus.Processing]: 'Processing'
+  [ProcessingStatus.Processing]: 'Processing',
+  [ProcessingStatus.Failed]: 'Failed'
 }

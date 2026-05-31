@@ -50,6 +50,8 @@ export interface CacheDocument {
   pageCount: number | null
   /** Cached document processing status. */
   processed: ProcessingStatus
+  /** Number of processing attempts made by the background processor. */
+  processingAttempts: number
   /** Model used for post-OCR enrichment, or `null` until processing completes. */
   processingModel: ModelId | null
   /** When the document was created in Paperless-ngx. */

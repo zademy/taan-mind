@@ -20,20 +20,7 @@
   clears the share URL from the UI.
 -->
 <script setup lang="ts">
-type ChatShare = {
-  token: string
-  path: string
-  url: string
-  isActive: boolean
-  mode: 'live'
-  createdAt: string | Date
-  expiresAt: string | Date | null
-  revokedAt: string | Date | null
-}
-
-type ChatSharePayload = {
-  share: ChatShare | null
-}
+import type { ChatSharePayload, ChatShareResponse } from '~~/shared/types/chatShares'
 
 const props = defineProps<{
   chatId: string
@@ -43,7 +30,7 @@ const toast = useToast()
 const { csrf, headerName } = useCsrf()
 
 const open = ref(false)
-const share = ref<ChatShare | null>(null)
+const share = ref<ChatShareResponse | null>(null)
 const loading = ref(false)
 const action = ref<'create' | 'copy' | 'rotate' | 'revoke' | null>(null)
 

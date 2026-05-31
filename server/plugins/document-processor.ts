@@ -32,6 +32,8 @@ import type { PaperlessFetchClient } from '../utils/paperless'
 /** Configuration required for AI-powered document enrichment models. */
 type DocumentProcessorConfig = LanguageModelRuntimeConfig
 
+const MAX_PROCESSING_ATTEMPTS = 3
+
 /**
  * Finds an existing correspondent by name (case-insensitive) or creates a new one.
  *
@@ -178,6 +180,7 @@ export default defineNitroPlugin(nitroApp => {
       if (isProcessing) return
       isProcessing = true
       let processingDocId: number | undefined
+      let processingAttempt: number | undefined
 
       try {
         // 1. Find ONE pending document
@@ -198,13 +201,27 @@ export default defineNitroPlugin(nitroApp => {
         }
 
         processingDocId = doc.id
-        consola.info(`[Document Processor] Processing document #${doc.id}: ${doc.title}`)
+        const currentAttempts = doc.processingAttempts ?? 0
+
+        if (currentAttempts >= MAX_PROCESSING_ATTEMPTS) {
+          await markDocumentAsFailed(doc.id, currentAttempts)
+          consola.warn(
+            `[Document Processor] Doc #${doc.id} reached ${currentAttempts}/${MAX_PROCESSING_ATTEMPTS} attempts and was marked as failed`
+          )
+          return
+        }
+
+        processingAttempt = currentAttempts + 1
+        consola.info(
+          `[Document Processor] Processing document #${doc.id}: ${doc.title} (attempt ${processingAttempt}/${MAX_PROCESSING_ATTEMPTS})`
+        )
 
         // 2. Mark as in-progress
         await db
           .update(schema.paperlessDocuments)
           .set({
             processed: ProcessingStatus.Processing,
+            processingAttempts: processingAttempt,
             processingStartedAt: new Date(),
             processingCompletedAt: null,
             updatedAt: new Date()
@@ -423,15 +440,29 @@ export default defineNitroPlugin(nitroApp => {
 
         consola.success(`[Document Processor] Doc #${doc.id} processed successfully`)
       } catch (error) {
-        consola.error('[Document Processor] Error:', error instanceof Error ? error.message : error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        consola.error('[Document Processor] Error:', errorMessage)
 
-        // Reset to pending for retry
+        // Reset to pending for retry until max attempts is reached.
         if (processingDocId !== undefined) {
           try {
-            await db
-              .update(schema.paperlessDocuments)
-              .set({ processed: ProcessingStatus.Pending, updatedAt: new Date() })
-              .where(eq(schema.paperlessDocuments.id, processingDocId))
+            const attemptCount = processingAttempt ?? 0
+
+            if (attemptCount >= MAX_PROCESSING_ATTEMPTS) {
+              await markDocumentAsFailed(processingDocId, attemptCount)
+              consola.warn(
+                `[Document Processor] Doc #${processingDocId} failed permanently after ${attemptCount}/${MAX_PROCESSING_ATTEMPTS} attempts: ${errorMessage}`
+              )
+            } else {
+              await db
+                .update(schema.paperlessDocuments)
+                .set({
+                  processed: ProcessingStatus.Pending,
+                  processingCompletedAt: null,
+                  updatedAt: new Date()
+                })
+                .where(eq(schema.paperlessDocuments.id, processingDocId))
+            }
           } catch {
             /* ignore recovery errors */
           }
@@ -453,6 +484,18 @@ export default defineNitroPlugin(nitroApp => {
     }
   })
 })
+
+async function markDocumentAsFailed(documentId: number, attempts: number): Promise<void> {
+  await db
+    .update(schema.paperlessDocuments)
+    .set({
+      processed: ProcessingStatus.Failed,
+      processingAttempts: attempts,
+      processingCompletedAt: new Date(),
+      updatedAt: new Date()
+    })
+    .where(eq(schema.paperlessDocuments.id, documentId))
+}
 
 /**
  * Formats raw OCR text into clean, well-structured content using the selected model.

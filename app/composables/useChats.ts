@@ -7,7 +7,7 @@
  * @module app/composables
  */
 
-import { isToday, isYesterday, subMonths } from 'date-fns'
+import { isToday, isYesterday, subMonths, subWeeks } from 'date-fns'
 
 /** Represents a chat entry displayed in the sidebar navigation. */
 export interface UIChat {
@@ -60,7 +60,7 @@ export function useChats(chats: Ref<UIChat[] | undefined>) {
     const older: Record<string, UIChat[]> = {}
 
     // Calculate boundary dates for group classification
-    const oneWeekAgo = subMonths(new Date(), 0.25) // ~7 days ago
+    const oneWeekAgo = subWeeks(new Date(), 1)
     const oneMonthAgo = subMonths(new Date(), 1)
 
     chats.value?.forEach(chat => {

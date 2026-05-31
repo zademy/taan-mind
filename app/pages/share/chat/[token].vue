@@ -6,15 +6,7 @@
   so viewers can see future owner-side chat changes.
 -->
 <script setup lang="ts">
-import type { UIMessage } from 'ai'
-
-type PublicSharedChat = {
-  title: string
-  messages: Array<UIMessage & { createdAt?: string | Date }>
-  sharedAt: string | Date
-  updatedAt: string | Date
-  isLive: true
-}
+import type { PublicSharedChatResponse } from '~~/shared/types/chatShares'
 
 definePageMeta({
   layout: 'share'
@@ -23,7 +15,7 @@ definePageMeta({
 const route = useRoute()
 const shareToken = computed(() => route.params.token as string)
 
-const { data, status, refresh } = await useFetch<PublicSharedChat>(
+const { data, status, refresh } = await useFetch<PublicSharedChatResponse>(
   () => `/api/shared-chats/${shareToken.value}`,
   {
     key: () => `shared-chat-${shareToken.value}`

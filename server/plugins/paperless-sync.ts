@@ -28,6 +28,7 @@ const toPaperlessDocumentRow = (doc: PaperlessDocument) => ({
   mimeType: doc.mime_type,
   pageCount: doc.page_count,
   processed: ProcessingStatus.Pending,
+  processingAttempts: 0,
   paperlessCreated: doc.created ? new Date(doc.created) : null,
   paperlessModified: doc.modified ? new Date(doc.modified) : null
 })

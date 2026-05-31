@@ -10,28 +10,20 @@
  *
  * @module server/api/cache
  */
-/**
- * Cache Documents List — GET /api/cache/documents
- *
- * Returns cached Paperless document metadata from SQLite with pagination,
- * optional `processed` filter, and configurable ordering.
- *
- * The list response intentionally excludes heavyweight document content
- * fields (`ocrContent` and `aiContent`). Those fields are only needed for
- * chat/document processing flows and should not be shipped to table views.
- *
- * @module server/api/cache
- */
 import { db, schema } from 'hub:db'
-import { desc, asc, eq, like, or, and, count, isNull } from 'drizzle-orm'
+import { desc, asc, eq, or, and, count, isNull, sql } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import { z } from 'zod'
 import { ProcessingStatus } from '#shared/utils/processingStatus'
 
+const LIKE_ESCAPE_CHARACTER = '\\'
+
 const processingStatuses = [
   ProcessingStatus.Pending,
   ProcessingStatus.Processed,
-  ProcessingStatus.Processing
+  ProcessingStatus.Processing,
+  ProcessingStatus.Failed
 ] as const
 
 const documentOrderingValues = [
@@ -47,6 +39,8 @@ const documentOrderingValues = [
   '-paperless_modified',
   'processed',
   '-processed',
+  'processing_attempts',
+  '-processing_attempts',
   'processing_model',
   '-processing_model',
   'mime_type',
@@ -61,6 +55,19 @@ const documentOrderingValues = [
   '-document_type'
 ] as const
 
+function isProcessingStatus(value: number): value is ProcessingStatus {
+  return processingStatuses.some(status => status === value)
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, character => `${LIKE_ESCAPE_CHARACTER}${character}`)
+}
+
+function containsEscapedLike(column: SQLiteColumn, value: string): SQL {
+  const pattern = `%${escapeLikePattern(value)}%`
+  return sql`${column} LIKE ${pattern} ESCAPE ${LIKE_ESCAPE_CHARACTER}`
+}
+
 /**
  * Query parameters for the cached documents list.
  *
@@ -71,14 +78,13 @@ const documentOrderingValues = [
  * - `search` — title/originalFileName free-text filter
  * - `mime_type` — exact MIME type match
  */
-/** Query parameters for the cached documents list. */
 const cacheDocumentsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(25),
   processed: z.coerce
     .number()
     .int()
-    .refine(value => processingStatuses.includes(value as ProcessingStatus), {
+    .refine(isProcessingStatus, {
       message: 'Invalid processing status'
     })
     .optional(),
@@ -114,10 +120,15 @@ export default defineEventHandler(async event => {
   const t = schema.paperlessDocuments
 
   // Build where clause
-  const conditions = [isNull(t.deletedAt)]
+  const conditions: SQL[] = [isNull(t.deletedAt)]
   if (processed !== undefined) conditions.push(eq(t.processed, processed))
   if (search) {
-    conditions.push(or(like(t.title, `%${search}%`), like(t.originalFileName, `%${search}%`))!)
+    const searchCondition = or(
+      containsEscapedLike(t.title, search),
+      containsEscapedLike(t.originalFileName, search)
+    )
+
+    if (searchCondition) conditions.push(searchCondition)
   }
   if (mimeType) conditions.push(eq(t.mimeType, mimeType))
   const where = conditions.length ? and(...conditions) : undefined
@@ -132,6 +143,7 @@ export default defineEventHandler(async event => {
     created_at: t.createdAt,
     paperless_modified: t.paperlessModified,
     processed: t.processed,
+    processing_attempts: t.processingAttempts,
     processing_model: t.processingModel,
     mime_type: t.mimeType,
     page_count: t.pageCount,
@@ -157,6 +169,7 @@ export default defineEventHandler(async event => {
       mimeType: t.mimeType,
       pageCount: t.pageCount,
       processed: t.processed,
+      processingAttempts: t.processingAttempts,
       processingModel: t.processingModel,
       processingStartedAt: t.processingStartedAt,
       processingCompletedAt: t.processingCompletedAt,
