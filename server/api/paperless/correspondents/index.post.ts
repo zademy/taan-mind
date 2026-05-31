@@ -10,6 +10,8 @@ const bodySchema = z.object({
  * POST /api/paperless/correspondents
  *
  * Creates a new correspondent in Paperless-ngx.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessCorrespondent> => {
   const body = await readValidatedBody(event, bodySchema.parse)
@@ -21,10 +23,6 @@ export default defineEventHandler(async (event): Promise<PaperlessCorrespondent>
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to create correspondent in Paperless'
-    })
+    handlePaperlessError(error, 'Failed to create correspondent in Paperless')
   }
 })

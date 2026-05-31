@@ -5,6 +5,8 @@ import { listOllamaModels } from '../../utils/ollama'
  *
  * Checks whether the Ollama OCR service is reachable and the configured
  * model is available. Returns status, model name, and availability flag.
+ *
+ * @module server/api/ocr
  */
 export default defineEventHandler(async event => {
   try {

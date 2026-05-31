@@ -5,6 +5,8 @@ import { listOllamaModels } from '../../utils/ollama'
  *
  * Lists all models available in the Ollama instance.
  * Proxies the response directly from the Ollama `/api/tags` endpoint.
+ *
+ * @module server/api/ocr
  */
 export default defineEventHandler(async event => {
   const models = await listOllamaModels(event)

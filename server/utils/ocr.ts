@@ -37,6 +37,9 @@ interface OcrPageResult {
   text: string
 }
 
+/** Maximum number of PDF pages sent to Ollama at the same time. */
+const PDF_OCR_PAGE_CONCURRENCY = 3
+
 /**
  * Result of OCR processing for a complete document.
  * Contains all extracted pages and metadata about the processing method.
@@ -255,9 +258,17 @@ export async function ocrDocument(
   if (mimeType === 'application/pdf') {
     const images = await pdfToImages(fileBuffer)
     const pages: OcrPageResult[] = []
-    for (let i = 0; i < images.length; i++) {
-      const text = await ocrImage(client, model, images[i]!, 'Text Recognition')
-      pages.push({ page: i + 1, text })
+
+    for (let start = 0; start < images.length; start += PDF_OCR_PAGE_CONCURRENCY) {
+      const batch = images.slice(start, start + PDF_OCR_PAGE_CONCURRENCY)
+      const batchPages = await Promise.all(
+        batch.map(async (image, index) => {
+          const page = start + index + 1
+          const text = await ocrImage(client, model, image, 'Text Recognition')
+          return { page, text }
+        })
+      )
+      pages.push(...batchPages)
     }
     return { pages, totalPages: images.length, method: 'ocr' }
   }

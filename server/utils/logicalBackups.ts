@@ -1,3 +1,23 @@
+/**
+ * Logical Backup Utilities
+ *
+ * ZIP-based logical backup pipeline for Taan Mind application data.
+ *
+ * Backups export: projects, chats, messages, custom personalities,
+ * app settings, paperless document cache, chat documents, and chat shares.
+ *
+ * Auth tables (user, account, session, verification) are explicitly excluded
+ * since they are tied to Better Auth credentials that must not be restored
+ * across different authentication domains.
+ *
+ * Restore is owner-agnostic: all `userId` references (projects, chats,
+ * custom personalities, chat shares) are remapped to the restoring admin's ID.
+ * This allows backup portability between accounts while preserving data shape.
+ *
+ * ZIP format: single `backup.json` entry, deflate compressed, no external deps.
+ *
+ * @module server/utils/logicalBackups
+ */
 import { Buffer } from 'node:buffer'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -15,20 +35,24 @@ import {
   type LogicalBackupStatus
 } from '#shared/utils/backups'
 
+// ZIP format constants
 const ZIP_LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50
 const ZIP_CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50
 const ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50
 const ZIP_COMPRESSION_STORE = 0
 const ZIP_COMPRESSION_DEFLATE = 8
 const ZIP_UTF8_FLAG = 0x0800
+// Directory for pre-restore safety backups, defaults to `.data/backups` in cwd.
 const PRE_RESTORE_BACKUP_DIR =
   process.env.NUXT_LOGICAL_BACKUP_DIR ||
   process.env.LOGICAL_BACKUP_DIR ||
   join(process.cwd(), '.data', 'backups')
 
+// Schema validation for parsed backup JSON
 const isoDateSchema = z.string().datetime()
 const nullableIsoDateSchema = isoDateSchema.nullable()
 
+// Zod schemas for each backed-up table row.
 const projectBackupSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -129,17 +153,30 @@ const logicalBackupPayloadSchema = z.object({
 
 type LogicalBackupPayload = z.output<typeof logicalBackupPayloadSchema>
 
+/**
+ * Guards against concurrent restore operations via module-level flag.
+ * Prevents race conditions when multiple admin clients trigger restore simultaneously.
+ */
 let restoreInProgress = false
 
+/** Options for building a logical backup ZIP. */
 interface BuildLogicalBackupOptions {
+  /** Include chat share records in the backup. */
   includeShares: boolean
 }
 
+/** Options for restoring a logical backup. */
 interface RestoreLogicalBackupOptions {
+  /** Target userId to own all restored records. */
   ownerUserId: string
+  /** Owner email, returned in the restore result for confirmation. */
   ownerEmail: string
 }
 
+/**
+ * Converts a Date, ISO string, or null to an ISO 8601 string.
+ * Falls back to the raw string if the value cannot be parsed.
+ */
 function toIso(value: Date | string | null): string | null {
   if (!value) return null
   if (value instanceof Date) return value.toISOString()
@@ -148,14 +185,20 @@ function toIso(value: Date | string | null): string | null {
   return Number.isNaN(date.getTime()) ? value : date.toISOString()
 }
 
+/** Parses an ISO 8601 string into a Date. */
 function toDate(value: string): Date {
   return new Date(value)
 }
 
+/** Parses an ISO 8601 string into a Date, or returns null. */
 function toNullableDate(value: string | null): Date | null {
   return value ? new Date(value) : null
 }
 
+/**
+ * Encodes a JavaScript Date into DOS date/time words used in ZIP headers.
+ * Dates before 1980 are clamped to 1980 to stay within DOS range.
+ */
 function getDosDateTime(date: Date) {
   const year = Math.max(date.getFullYear(), 1980)
 
@@ -165,6 +208,10 @@ function getDosDateTime(date: Date) {
   }
 }
 
+/**
+ * Builds the CRC-32 lookup table used for ZIP checksum verification.
+ * Uses the standard polynomial from ISO 3309.
+ */
 function makeCrc32Table() {
   const table = new Uint32Array(256)
 
@@ -181,6 +228,10 @@ function makeCrc32Table() {
 
 const crc32Table = makeCrc32Table()
 
+/**
+ * Computes the CRC-32 checksum of a Buffer.
+ * Reflected algorithm matching the ZIP spec.
+ */
 function crc32(data: Buffer): number {
   let value = 0xffffffff
 
@@ -191,6 +242,17 @@ function crc32(data: Buffer): number {
   return (value ^ 0xffffffff) >>> 0
 }
 
+/**
+ * Creates a minimal, valid ZIP archive containing a single file.
+ *
+ * Layout:
+ *   [local file header] [filename] [compressed data]
+ *   [central directory entry] [filename] [end of central directory]
+ *
+ * @param fileName - UTF-8 filename stored inside the ZIP
+ * @param content  - Raw file content
+ * @returns Complete ZIP archive as a Buffer
+ */
 function createZipArchive(fileName: string, content: Buffer): Buffer {
   const fileNameBuffer = Buffer.from(fileName, 'utf8')
   const compressed = deflateRawSync(content, { level: 9 })
@@ -243,6 +305,14 @@ function createZipArchive(fileName: string, content: Buffer): Buffer {
   ])
 }
 
+/**
+ * Finds the offset of the End-of-Central-Directory record in a ZIP.
+ * Searches backward from the end of the file since the record is fixed-size (22 bytes).
+ *
+ * @param zip - Raw ZIP buffer
+ * @returns Byte offset of the EOCD record
+ * @throws Error if the ZIP is invalid and no EOCD signature is found
+ */
 function findEndOfCentralDirectory(zip: Buffer): number {
   const minOffset = Math.max(0, zip.length - 65_557)
 
@@ -255,6 +325,22 @@ function findEndOfCentralDirectory(zip: Buffer): number {
   throw new Error('Invalid ZIP: end of central directory not found')
 }
 
+/**
+ * Reads and decompresses a single file entry from a ZIP archive.
+ *
+ * Validates:
+ *   - Central directory entry exists and is uncorrupted
+ *   - Local file header is present at the recorded offset
+ *   - Decompressed size stays within {@link LOGICAL_BACKUP_MAX_UPLOAD_BYTES}
+ *   - CRC-32 of decompressed data matches the central directory record
+ *
+ * Supports both STORE (uncompressed) and DEFLATE compression.
+ *
+ * @param zip      - Raw ZIP buffer
+ * @param fileName - Exact filename to extract
+ * @returns Decompressed file content
+ * @throws Error if the file is missing, the ZIP is corrupt, or decompression fails
+ */
 function extractFileFromZip(zip: Buffer, fileName: string): Buffer {
   const endOffset = findEndOfCentralDirectory(zip)
   const entryCount = zip.readUInt16LE(endOffset + 10)
@@ -319,12 +405,26 @@ function extractFileFromZip(zip: Buffer, fileName: string): Buffer {
   throw new Error(`Invalid ZIP: ${fileName} not found`)
 }
 
+/**
+ * Parses a logical backup ZIP and validates its schema.
+ *
+ * @param buffer - Raw ZIP buffer from an uploaded backup
+ * @returns Parsed and validated backup payload
+ * @throws ZodError if the JSON does not match the expected schema
+ */
 function parseLogicalBackupPayload(buffer: Buffer): LogicalBackupPayload {
   const jsonBuffer = extractFileFromZip(buffer, LOGICAL_BACKUP_JSON_NAME)
   const parsed = JSON.parse(jsonBuffer.toString('utf8')) as unknown
   return logicalBackupPayloadSchema.parse(parsed)
 }
 
+/**
+ * Returns the current row counts for all tables included in a logical backup.
+ *
+ * Used by the UI to show backup status and record counts before download or restore.
+ *
+ * @returns Backup status including format version, size limits, and current counts
+ */
 export async function getLogicalBackupStatus(): Promise<LogicalBackupStatus> {
   const [projects] = await db.select({ value: count() }).from(schema.projects)
   const [chats] = await db.select({ value: count() }).from(schema.chats)
@@ -355,6 +455,20 @@ export async function getLogicalBackupStatus(): Promise<LogicalBackupStatus> {
   }
 }
 
+/**
+ * Serializes all application data into a ZIP archive containing `backup.json`.
+ *
+ * Data included:
+ *   - projects, chats, messages (always)
+ *   - chatShares (when `includeShares: true`)
+ *   - custom personalities, app settings, paperless documents, chat documents (always)
+ *
+ * Auth tables are never included — they are tied to the authentication system
+ * and must not be restored across different accounts.
+ *
+ * @param options - Build options, must specify `includeShares`
+ * @returns ZIP archive as a Buffer, ready to be sent as a file download
+ */
 export async function buildLogicalBackupZip(options: BuildLogicalBackupOptions): Promise<Buffer> {
   const [
     projects,
@@ -462,6 +576,14 @@ export async function buildLogicalBackupZip(options: BuildLogicalBackupOptions):
   return createZipArchive(LOGICAL_BACKUP_JSON_NAME, Buffer.from(json, 'utf8'))
 }
 
+/**
+ * Saves a pre-restore safety backup before touching the database.
+ *
+ * If restore fails, this file can be used for manual recovery.
+ * Stored in `PRE_RESTORE_BACKUP_DIR` with a `pre-restore-` prefix.
+ *
+ * @returns Filename of the saved safety backup
+ */
 async function savePreRestoreBackup(): Promise<string> {
   const backup = await buildLogicalBackupZip({ includeShares: true })
   const fileName = `pre-restore-${getLogicalBackupFileName()}`
@@ -472,6 +594,23 @@ async function savePreRestoreBackup(): Promise<string> {
   return fileName
 }
 
+/**
+ * Restores application data from a logical backup ZIP.
+ *
+ * Operations:
+ *   1. Validates payload schema
+ *   2. Saves a pre-restore safety backup
+ *   3. Deletes all app tables in a transaction
+ *   4. Inserts all backed-up rows, remapping `userId` to the restoring admin
+ *   5. Returns counts and the safety backup filename for confirmation
+ *
+ * Project/chat/document IDs are preserved from the backup.
+ * Orphaned references (e.g., a chat whose project was not in the backup) are nulled.
+ *
+ * @param backup  - Raw ZIP buffer from the uploaded backup file
+ * @param options - Must include `ownerUserId` (current admin) and `ownerEmail`
+ * @returns Restore result with counts and safety backup filename
+ */
 export async function restoreLogicalBackupZip(
   backup: Buffer,
   options: RestoreLogicalBackupOptions
@@ -492,6 +631,11 @@ export async function restoreLogicalBackupZip(
   }
 }
 
+/**
+ * Internal restore implementation with error handling.
+ * Throws H3 errors on validation failure, payload corruption, or safety backup failure.
+ * Commits changes in a single database transaction.
+ */
 async function restoreLogicalBackupZipUnsafe(backup: Buffer, options: RestoreLogicalBackupOptions) {
   if (backup.length > LOGICAL_BACKUP_MAX_UPLOAD_BYTES) {
     throw createError({
@@ -671,6 +815,14 @@ async function restoreLogicalBackupZipUnsafe(backup: Buffer, options: RestoreLog
   }
 }
 
+/**
+ * Generates a human-readable ZIP filename for download.
+ *
+ * Format: `taan-mind-logical-backup-YYYY-MM-DDTHH-MM-SS.sssZ.zip`
+ *
+ * @param date - Timestamp to embed in the filename (default: now)
+ * @returns Filename string suitable for Content-Disposition headers
+ */
 export function getLogicalBackupFileName(date = new Date()) {
   const stamp = date.toISOString().replace(/[:.]/g, '-')
   return `taan-mind-logical-backup-${stamp}.zip`

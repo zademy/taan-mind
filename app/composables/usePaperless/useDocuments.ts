@@ -1,3 +1,12 @@
+/**
+ * Paperless Documents Composable
+ *
+ * Fetches documents from Paperless-ngx with filtering, pagination,
+ * full-text search, and mutation helpers (update, delete, upload, OCR).
+ *
+ * @module app/composables
+ */
+
 import type {
   PaperlessPaginatedResponse,
   PaperlessDocument,

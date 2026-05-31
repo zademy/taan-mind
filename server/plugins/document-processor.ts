@@ -14,12 +14,20 @@
 import { eq, asc, or } from 'drizzle-orm'
 import { consola } from 'consola'
 import { generateText } from 'ai'
+import { db, schema } from 'hub:db'
 import type { PaperlessDocument } from '~~/shared/types/paperless'
 import type { ModelId } from '#shared/utils/models'
+import { ProcessingStatus } from '#shared/utils/processingStatus'
 import { cleanText } from '../utils/textCleaner'
 import type { LanguageModelRuntimeConfig } from '../utils/aiModels'
 import { getLanguageModelProviderOptions, resolveLanguageModelFromConfig } from '../utils/aiModels'
 import { getDocumentProcessingSettings } from '../utils/documentProcessingSettings'
+import {
+  createPaperlessClient,
+  getOptionalPaperlessConfig,
+  PAPERLESS_CONFIG_MISSING_MESSAGE
+} from '../utils/paperless'
+import type { PaperlessFetchClient } from '../utils/paperless'
 
 /** Configuration required for AI-powered document enrichment models. */
 type DocumentProcessorConfig = LanguageModelRuntimeConfig
@@ -28,33 +36,23 @@ type DocumentProcessorConfig = LanguageModelRuntimeConfig
  * Finds an existing correspondent by name (case-insensitive) or creates a new one.
  *
  * @param name - The correspondent name to look up or create.
- * @param baseUrl - The Paperless-ngx API base URL (no trailing slash).
- * @param token - The Paperless-ngx API authentication token.
+ * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns The numeric ID of the found or newly created correspondent.
  */
 async function findOrCreateCorrespondent(
   name: string,
-  baseUrl: string,
-  token: string
+  paperless: PaperlessFetchClient
 ): Promise<number> {
-  const response = await $fetch<{ results: Array<{ id: number; name: string }> }>(
-    `${baseUrl}/api/correspondents/`,
-    {
-      headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
-      query: { name__icontains: name }
-    }
+  const response = await paperless<{ results: Array<{ id: number; name: string }> }>(
+    '/correspondents/',
+    { query: { name__icontains: name } }
   )
 
   const existing = response.results.find(c => c.name.toLowerCase() === name.toLowerCase())
   if (existing) return existing.id
 
-  const created = await $fetch<{ id: number }>(`${baseUrl}/api/correspondents/`, {
+  const created = await paperless<{ id: number }>('/correspondents/', {
     method: 'POST',
-    headers: {
-      Authorization: `Token ${token}`,
-      Accept: 'application/json; version=5',
-      'Content-Type': 'application/json'
-    },
     body: { name }
   })
   return created.id
@@ -64,33 +62,23 @@ async function findOrCreateCorrespondent(
  * Finds an existing document type by name (case-insensitive) or creates a new one.
  *
  * @param name - The document type name to look up or create.
- * @param baseUrl - The Paperless-ngx API base URL (no trailing slash).
- * @param token - The Paperless-ngx API authentication token.
+ * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns The numeric ID of the found or newly created document type.
  */
 async function findOrCreateDocumentType(
   name: string,
-  baseUrl: string,
-  token: string
+  paperless: PaperlessFetchClient
 ): Promise<number> {
-  const response = await $fetch<{ results: Array<{ id: number; name: string }> }>(
-    `${baseUrl}/api/document_types/`,
-    {
-      headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
-      query: { name__icontains: name }
-    }
+  const response = await paperless<{ results: Array<{ id: number; name: string }> }>(
+    '/document_types/',
+    { query: { name__icontains: name } }
   )
 
   const existing = response.results.find(t => t.name.toLowerCase() === name.toLowerCase())
   if (existing) return existing.id
 
-  const created = await $fetch<{ id: number }>(`${baseUrl}/api/document_types/`, {
+  const created = await paperless<{ id: number }>('/document_types/', {
     method: 'POST',
-    headers: {
-      Authorization: `Token ${token}`,
-      Accept: 'application/json; version=5',
-      'Content-Type': 'application/json'
-    },
     body: { name }
   })
   return created.id
@@ -102,18 +90,14 @@ async function findOrCreateDocumentType(
  * Queries Paperless for the document with the highest ASN and returns that + 1.
  * Falls back to `1` if no documents have an ASN assigned.
  *
- * @param baseUrl - The Paperless-ngx API base URL (no trailing slash).
- * @param token - The Paperless-ngx API authentication token.
+ * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns The next sequential ASN value.
  */
-async function getNextASN(baseUrl: string, token: string): Promise<number> {
+async function getNextASN(paperless: PaperlessFetchClient): Promise<number> {
   // Get documents ordered by ASN descending, limit 1
-  const response = await $fetch<{ results: Array<{ archive_serial_number: number | null }> }>(
-    `${baseUrl}/api/documents/`,
-    {
-      headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
-      query: { ordering: '-archive_serial_number', page_size: 1 }
-    }
+  const response = await paperless<{ results: Array<{ archive_serial_number: number | null }> }>(
+    '/documents/',
+    { query: { ordering: '-archive_serial_number', page_size: 1 } }
   )
 
   const maxASN = response.results?.[0]?.archive_serial_number
@@ -127,36 +111,26 @@ async function getNextASN(baseUrl: string, token: string): Promise<number> {
  * either returns the matching ID or creates a new tag and returns its ID.
  *
  * @param names - Array of tag names to resolve.
- * @param baseUrl - The Paperless-ngx API base URL (no trailing slash).
- * @param token - The Paperless-ngx API authentication token.
+ * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns An array of numeric tag IDs in the same order as the input names.
  */
 async function findOrCreateTags(
   names: string[],
-  baseUrl: string,
-  token: string
+  paperless: PaperlessFetchClient
 ): Promise<number[]> {
   const tagIds: number[] = []
 
-  const response = await $fetch<{ results: Array<{ id: number; name: string }> }>(
-    `${baseUrl}/api/tags/?page_size=500`,
-    {
-      headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' }
-    }
-  )
+  const response = await paperless<{ results: Array<{ id: number; name: string }> }>('/tags/', {
+    query: { page_size: 500 }
+  })
 
   for (const name of names) {
     const existing = response.results.find(t => t.name.toLowerCase() === name.toLowerCase())
     if (existing) {
       tagIds.push(existing.id)
     } else {
-      const created = await $fetch<{ id: number }>(`${baseUrl}/api/tags/`, {
+      const created = await paperless<{ id: number }>('/tags/', {
         method: 'POST',
-        headers: {
-          Authorization: `Token ${token}`,
-          Accept: 'application/json; version=5',
-          'Content-Type': 'application/json'
-        },
         body: { name }
       })
       tagIds.push(created.id)
@@ -170,14 +144,14 @@ async function findOrCreateTags(
  * Nitro plugin that processes pending Paperless documents one at a time.
  *
  * Flow per iteration:
- * 1. Find ONE unprocessed document (processed=0), oldest first
- * 2. Mark as in-progress (processed=2)
+ * 1. Find ONE pending document, oldest first
+ * 2. Mark as processing
  * 3. Download file from Paperless
  * 4. Run OCR
  * 5. Format content with the selected enrichment model
  * 6. Extract metadata with the selected enrichment model
  * 7. PATCH Paperless (only empty fields)
- * 8. Mark as done (processed=1)
+ * 8. Mark as processed
  */
 export default defineNitroPlugin(nitroApp => {
   let intervalId: ReturnType<typeof setInterval> | null = null
@@ -191,14 +165,12 @@ export default defineNitroPlugin(nitroApp => {
     const config = useRuntimeConfig()
     const intervalMs = Number(config.processIntervalMs) || 10000
 
-    const baseUrl = config.paperlessBaseUrl?.replace(/\/+$/, '')
-    const token = config.paperlessApiToken
-    if (!baseUrl || !token) {
-      consola.warn(
-        '[Document Processor] Not configured (NUXT_PAPERLESS_BASE_URL or NUXT_PAPERLESS_API_TOKEN is missing)'
-      )
+    const paperlessConfig = getOptionalPaperlessConfig()
+    if (!paperlessConfig) {
+      consola.warn(`[Document Processor] Not configured (${PAPERLESS_CONFIG_MISSING_MESSAGE})`)
       return
     }
+    const paperless = createPaperlessClient(paperlessConfig)
 
     consola.info(`[Document Processor] Starting processing every ${intervalMs}ms`)
 
@@ -214,8 +186,8 @@ export default defineNitroPlugin(nitroApp => {
           .from(schema.paperlessDocuments)
           .where(
             or(
-              eq(schema.paperlessDocuments.processed, 0),
-              eq(schema.paperlessDocuments.processed, 2)
+              eq(schema.paperlessDocuments.processed, ProcessingStatus.Pending),
+              eq(schema.paperlessDocuments.processed, ProcessingStatus.Processing)
             )
           )
           .orderBy(asc(schema.paperlessDocuments.paperlessCreated))
@@ -232,7 +204,7 @@ export default defineNitroPlugin(nitroApp => {
         await db
           .update(schema.paperlessDocuments)
           .set({
-            processed: 2,
+            processed: ProcessingStatus.Processing,
             processingStartedAt: new Date(),
             processingCompletedAt: null,
             updatedAt: new Date()
@@ -295,15 +267,7 @@ export default defineNitroPlugin(nitroApp => {
 
         // 9. Get current document from Paperless to check empty fields
         consola.info(`[Document Processor] Doc #${doc.id} — Querying Paperless for empty fields...`)
-        const paperlessDoc = await $fetch<PaperlessDocument>(
-          `${baseUrl}/api/documents/${doc.id}/`,
-          {
-            headers: {
-              Authorization: `Token ${token}`,
-              Accept: 'application/json; version=5'
-            }
-          }
-        )
+        const paperlessDoc = await paperless<PaperlessDocument>(`/documents/${doc.id}/`)
 
         // 10. Build PATCH payload — ONLY fill empty/null fields, NEVER overwrite
         const patchBody: Record<string, string | number | number[] | null> = {}
@@ -322,8 +286,7 @@ export default defineNitroPlugin(nitroApp => {
           try {
             const correspondentId = await findOrCreateCorrespondent(
               metadata.suggestedCorrespondent,
-              baseUrl,
-              token
+              paperless
             )
             patchBody.correspondent = correspondentId
             consola.info(
@@ -342,8 +305,7 @@ export default defineNitroPlugin(nitroApp => {
           try {
             const docTypeId = await findOrCreateDocumentType(
               metadata.suggestedDocumentType,
-              baseUrl,
-              token
+              paperless
             )
             patchBody.document_type = docTypeId
             consola.info(
@@ -360,7 +322,7 @@ export default defineNitroPlugin(nitroApp => {
         // Tags: resolve names to IDs, merge with existing tags (don't overwrite)
         if (metadata.suggestedTags?.length) {
           try {
-            const newTagIds = await findOrCreateTags(metadata.suggestedTags, baseUrl, token)
+            const newTagIds = await findOrCreateTags(metadata.suggestedTags, paperless)
             const existingTagIds = paperlessDoc.tags || []
             const mergedTags = [...new Set([...existingTagIds, ...newTagIds])]
             if (mergedTags.length > existingTagIds.length) {
@@ -380,10 +342,9 @@ export default defineNitroPlugin(nitroApp => {
         // Archive Serial Number: auto-assign if empty, verify not already used
         if (!paperlessDoc.archive_serial_number) {
           try {
-            const candidateASN = await getNextASN(baseUrl, token)
+            const candidateASN = await getNextASN(paperless)
             // Verify the candidate ASN is not already used
-            const checkExisting = await $fetch<{ count: number }>(`${baseUrl}/api/documents/`, {
-              headers: { Authorization: `Token ${token}`, Accept: 'application/json; version=5' },
+            const checkExisting = await paperless<{ count: number }>('/documents/', {
               query: { archive_serial_number: candidateASN, page_size: 1 }
             })
             if (checkExisting.count > 0) {
@@ -414,13 +375,8 @@ export default defineNitroPlugin(nitroApp => {
               `[Document Processor] Doc #${doc.id} — PATCH payload:`,
               JSON.stringify(patchBody)
             )
-            await $fetch(`${baseUrl}/api/documents/${doc.id}/`, {
+            await paperless(`/documents/${doc.id}/`, {
               method: 'PATCH',
-              headers: {
-                Authorization: `Token ${token}`,
-                Accept: 'application/json; version=5',
-                'Content-Type': 'application/json'
-              },
               body: patchBody
             })
             consola.success(`[Document Processor] Doc #${doc.id} — PATCH applied successfully`)
@@ -428,13 +384,8 @@ export default defineNitroPlugin(nitroApp => {
             // Add a note documenting the AI processing
             try {
               const noteText = `Document automatically processed by AI (${enrichmentModel}).\nUpdated fields: ${Object.keys(patchBody).join(', ')}`
-              await $fetch(`${baseUrl}/api/documents/${doc.id}/notes/`, {
+              await paperless(`/documents/${doc.id}/notes/`, {
                 method: 'POST',
-                headers: {
-                  Authorization: `Token ${token}`,
-                  Accept: 'application/json; version=5',
-                  'Content-Type': 'application/json'
-                },
                 body: { note: noteText }
               })
               consola.info(`[Document Processor] Doc #${doc.id} — Note added`)
@@ -463,7 +414,7 @@ export default defineNitroPlugin(nitroApp => {
         await db
           .update(schema.paperlessDocuments)
           .set({
-            processed: 1,
+            processed: ProcessingStatus.Processed,
             processingModel: enrichmentModel,
             processingCompletedAt: new Date(),
             updatedAt: new Date()
@@ -479,7 +430,7 @@ export default defineNitroPlugin(nitroApp => {
           try {
             await db
               .update(schema.paperlessDocuments)
-              .set({ processed: 0, updatedAt: new Date() })
+              .set({ processed: ProcessingStatus.Pending, updatedAt: new Date() })
               .where(eq(schema.paperlessDocuments.id, processingDocId))
           } catch {
             /* ignore recovery errors */
@@ -583,7 +534,12 @@ ${formattedContent}`
 
   try {
     return JSON.parse(text)
-  } catch {
+  } catch (error) {
+    consola.warn('[Document Processor] Failed to parse metadata JSON response', {
+      model: enrichmentModel,
+      error: error instanceof Error ? error.message : String(error),
+      responseLength: text.length
+    })
     return {}
   }
 }

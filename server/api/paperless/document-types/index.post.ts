@@ -10,6 +10,8 @@ const bodySchema = z.object({
  * POST /api/paperless/document-types
  *
  * Creates a new document type in Paperless-ngx.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessDocumentType> => {
   const body = await readValidatedBody(event, bodySchema.parse)
@@ -21,10 +23,6 @@ export default defineEventHandler(async (event): Promise<PaperlessDocumentType> 
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to create document type in Paperless'
-    })
+    handlePaperlessError(error, 'Failed to create document type in Paperless')
   }
 })

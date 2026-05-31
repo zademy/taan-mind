@@ -7,6 +7,8 @@ import { z } from 'zod'
  *
  * Deletes a chat and all its associated messages (cascade).
  * Only the owner of the chat can delete it.
+ *
+ * @module server/api/chats
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

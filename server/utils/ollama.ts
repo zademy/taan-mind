@@ -6,6 +6,8 @@
  * URL resolution so the same functions work inside HTTP handlers and Nitro plugins.
  */
 import type { H3Event } from 'h3'
+import { createTtlCache } from './modelListCache'
+import { stripTrailingSlash } from './url'
 
 /** Model entry returned by Ollama's `/api/tags` endpoint. */
 export interface OllamaModel {
@@ -27,6 +29,8 @@ interface OllamaTagsResponse {
   models?: OllamaModel[]
 }
 
+const ollamaModelsCache = createTtlCache<OllamaModel[]>()
+
 /** Runtime config subset required by Ollama helpers. */
 export interface OllamaRuntimeConfig {
   /** Base URL for the Ollama native API. */
@@ -44,7 +48,7 @@ export function getOllamaBaseUrlFromConfig(config: OllamaRuntimeConfig): string 
   const baseURL = config.ollamaBaseUrl
 
   if (typeof baseURL === 'string' && baseURL.trim()) {
-    return baseURL.trim().replace(/\/+$/, '')
+    return stripTrailingSlash(baseURL.trim())
   }
 
   throw createError({ statusCode: 500, statusMessage: 'NUXT_OLLAMA_BASE_URL is not configured' })
@@ -98,14 +102,18 @@ export function getOllamaOpenAIBaseUrlFromConfig(config: OllamaRuntimeConfig): s
  * @returns Available Ollama models with normalized names.
  */
 export async function listOllamaModels(event: H3Event): Promise<OllamaModel[]> {
-  const tags = await useOllamaClient(event)<OllamaTagsResponse>('/api/tags')
+  const baseURL = getOllamaBaseUrl(event)
 
-  return (tags.models ?? [])
-    .map(model => {
-      const name = model.name || model.model || ''
-      return { ...model, name }
-    })
-    .filter((model): model is OllamaModel => model.name.trim().length > 0)
+  return ollamaModelsCache.get(baseURL, async () => {
+    const tags = await $fetch<OllamaTagsResponse>('/api/tags', { baseURL })
+
+    return (tags.models ?? [])
+      .map(model => {
+        const name = model.name || model.model || ''
+        return { ...model, name }
+      })
+      .filter((model): model is OllamaModel => model.name.trim().length > 0)
+  })
 }
 
 /**

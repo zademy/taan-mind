@@ -11,6 +11,8 @@ import { getChatDocumentSummaries } from '../../utils/chatDocuments'
  * - Private chats are only accessible by the owner.
  * - Public chats are accessible by any authenticated user.
  * - The `userId` field is excluded from the response for privacy.
+ *
+ * @module server/api/chats
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

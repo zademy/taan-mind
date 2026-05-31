@@ -1,3 +1,11 @@
+/**
+ * Paperless Tags — POST /api/paperless/tags
+ *
+ * Creates a new tag in Paperless-ngx.
+ *
+ * @module server/api/paperless
+ */
+
 import type { PaperlessTag } from '~~/shared/types/paperless'
 import { z } from 'zod'
 
@@ -25,10 +33,6 @@ export default defineEventHandler(async (event): Promise<PaperlessTag> => {
       body
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to create tag in Paperless'
-    })
+    handlePaperlessError(error, 'Failed to create tag in Paperless')
   }
 })

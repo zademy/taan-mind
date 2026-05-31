@@ -9,6 +9,8 @@ import { getOwnedChatOrThrow, getOwnedChatShare } from '../../../utils/chatShare
  *
  * @routeParam id — The chat UUID.
  * @response `{ share: ChatShareResponse | null }`
+
+ * @module server/api/chats
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

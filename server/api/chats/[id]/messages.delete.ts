@@ -11,6 +11,8 @@ import { z } from 'zod'
  *   so the user can re-submit an edited version.
  * - **regenerate**: Removes the target assistant message and everything after it,
  *   so the AI can generate a new response.
+ *
+ * @module server/api/chats
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

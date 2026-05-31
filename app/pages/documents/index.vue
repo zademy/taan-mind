@@ -16,6 +16,7 @@ import { h, resolveComponent } from 'vue'
 import { LazyModalConfirm } from '#components'
 import type { TableColumn } from '@nuxt/ui'
 import { MODELS } from '#shared/utils/models'
+import { PROCESSING_STATUS_LABELS, ProcessingStatus } from '#shared/utils/processingStatus'
 import type { CacheDocument } from '~/composables/useCacheDocuments'
 
 /** Pre-resolved UBadge component for use in render functions */
@@ -180,9 +181,18 @@ onUnmounted(() => {
 /** Available processing status filter options */
 const statusOptions = [
   { label: 'All', value: 'all' },
-  { label: 'Pending', value: '0' },
-  { label: 'Processed', value: '1' },
-  { label: 'Processing', value: '2' }
+  {
+    label: PROCESSING_STATUS_LABELS[ProcessingStatus.Pending],
+    value: String(ProcessingStatus.Pending)
+  },
+  {
+    label: PROCESSING_STATUS_LABELS[ProcessingStatus.Processed],
+    value: String(ProcessingStatus.Processed)
+  },
+  {
+    label: PROCESSING_STATUS_LABELS[ProcessingStatus.Processing],
+    value: String(ProcessingStatus.Processing)
+  }
 ]
 
 /** Available MIME type filter options covering common document formats */
@@ -287,7 +297,7 @@ function mimeLabel(mime: string | null): string {
 function formatDuration(doc: CacheDocument): string {
   if (!doc.processingStartedAt) return '-'
   if (!doc.processingCompletedAt) {
-    if (doc.processed === 2) return 'In progress...'
+    if (doc.processed === ProcessingStatus.Processing) return 'In progress...'
     return '-'
   }
   const start = new Date(doc.processingStartedAt).getTime()
@@ -409,9 +419,12 @@ const columns: TableColumn<CacheDocument>[] = [
       }
     },
     cell: ({ row }) => {
-      const val = row.getValue('processed')
-      const label = val === 1 ? 'Processed' : val === 2 ? 'Processing' : 'Pending'
-      const color = val === 1 ? 'success' : val === 2 ? 'warning' : 'neutral'
+      const val = row.getValue('processed') as ProcessingStatus
+      const isProcessed = val === ProcessingStatus.Processed
+      const isProcessing = val === ProcessingStatus.Processing
+      const label =
+        PROCESSING_STATUS_LABELS[val] ?? PROCESSING_STATUS_LABELS[ProcessingStatus.Pending]
+      const color = isProcessed ? 'success' : isProcessing ? 'warning' : 'neutral'
       return h(
         UBadge,
         {
@@ -460,7 +473,7 @@ const columns: TableColumn<CacheDocument>[] = [
     cell: ({ row }) => {
       const doc = row.original
       const duration = formatDuration(doc)
-      if (doc.processed === 2 && !doc.processingCompletedAt) {
+      if (doc.processed === ProcessingStatus.Processing && !doc.processingCompletedAt) {
         return h(UBadge, { variant: 'subtle', color: 'info', size: 'sm' }, () => 'In progress...')
       }
       return h('span', { class: 'text-sm text-muted' }, duration)
@@ -491,7 +504,7 @@ const columns: TableColumn<CacheDocument>[] = [
     },
     cell: ({ row }) => {
       const id = row.original.id
-      const isProcessing = row.original.processed === 2
+      const isProcessing = row.original.processed === ProcessingStatus.Processing
       const isReprocessing = reprocessingIds.value.has(id)
       const isDeleting = deletingIds.value.has(id)
       const busy = isProcessing || isReprocessing || isDeleting

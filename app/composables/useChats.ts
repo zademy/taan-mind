@@ -1,3 +1,12 @@
+/**
+ * Chats Navigation Composable
+ *
+ * Groups user chats into date buckets (Today, Yesterday, This Week, etc.)
+ * for the sidebar navigation. Handles project-scoped and standalone chats.
+ *
+ * @module app/composables
+ */
+
 import { isToday, isYesterday, subMonths } from 'date-fns'
 
 /** Represents a chat entry displayed in the sidebar navigation. */

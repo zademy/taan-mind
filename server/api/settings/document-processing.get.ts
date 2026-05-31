@@ -6,6 +6,8 @@ import { getDocumentProcessingSettings } from '../../utils/documentProcessingSet
  *
  * Returns the global model used after OCR to format document content and enrich
  * Paperless metadata.
+ *
+ * @module server/api/settings
  */
 export default defineEventHandler(async (): Promise<DocumentProcessingSettings> => {
   return getDocumentProcessingSettings()

@@ -10,6 +10,8 @@ const paramsSchema = z.object({
  *
  * Retrieves a specific background task by its UUID.
  * Looks up the task via the `task_id` query parameter on the Paperless API.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async event => {
   const { id } = await getValidatedRouterParams(event, paramsSchema.parse)
@@ -22,10 +24,6 @@ export default defineEventHandler(async event => {
       })
     })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 500,
-      statusMessage: err?.statusMessage || `Failed to fetch task ${id}`
-    })
+    handlePaperlessError(error, `Failed to fetch task ${id}`, 500)
   }
 })

@@ -13,6 +13,8 @@ import type { DeleteDeviceSessionsResult } from '#shared/utils/deviceSessions'
  * signed out when revoking all other devices from the settings modal.
  *
  * @returns DeleteDeviceSessionsResult — `{ ok: true, deletedCount }`
+ *
+ * @module server/api/settings
  */
 export default defineEventHandler(async (event): Promise<DeleteDeviceSessionsResult> => {
   const authSession = await requireAuthSession(event)

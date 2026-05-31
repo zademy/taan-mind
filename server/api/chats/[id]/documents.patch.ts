@@ -1,3 +1,13 @@
+/**
+ * Chat Documents — PATCH /api/chats/:id/documents
+ *
+ * Replaces the document context for a chat owned by the current user.
+ * Used by project starter chats so users can search and attach Paperless
+ * documents before asking a question.
+ *
+ * @module server/api/chats
+ */
+
 import { db, schema } from 'hub:db'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'

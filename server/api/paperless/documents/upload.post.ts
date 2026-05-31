@@ -14,23 +14,7 @@ export default defineEventHandler(async event => {
     })
   }
 
-  const config = useRuntimeConfig(event)
-  const baseURL = config.paperlessBaseUrl?.replace(/\/+$/, '')
-  const token = config.paperlessApiToken
-
-  if (!baseURL) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'NUXT_PAPERLESS_BASE_URL is not configured'
-    })
-  }
-
-  if (!token) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'NUXT_PAPERLESS_API_TOKEN is not configured'
-    })
-  }
+  const { apiBaseUrl, authHeaders } = getPaperlessConfig(event)
 
   // Rebuild FormData for the upstream request
   const body = new FormData()
@@ -49,20 +33,14 @@ export default defineEventHandler(async event => {
   }
 
   try {
-    const result = await $fetch(`${baseURL}/api/documents/post_document/`, {
+    const result = await $fetch(`${apiBaseUrl}/documents/post_document/`, {
       method: 'POST',
-      headers: {
-        Authorization: `Token ${token}`
-      },
+      headers: authHeaders,
       body
     })
 
     return result
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to upload document to Paperless'
-    })
+    handlePaperlessError(error, 'Failed to upload document to Paperless')
   }
 })

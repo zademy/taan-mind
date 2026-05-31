@@ -17,6 +17,8 @@ interface CorrespondentListOptions {
  *
  * @param options - Pagination, ordering, and fetch-mode options.
  * @returns A `useFetch` / `useLazyFetch` result with the paginated correspondent list.
+ *
+ * @module app/composables
  */
 export function useCorrespondents(options: CorrespondentListOptions = {}) {
   const { page = 1, pageSize = 25, ordering = 'name', lazy = false } = options

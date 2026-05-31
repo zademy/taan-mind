@@ -7,6 +7,8 @@ import type { H3Event } from 'h3'
  *
  * Session payloads are not trusted as the source of truth for authorization;
  * the role is read from SQLite on every privileged settings mutation.
+ *
+ * @module server/utils
  */
 export async function requireAdminSession(event: H3Event) {
   const authSession = await requireAuthSession(event)

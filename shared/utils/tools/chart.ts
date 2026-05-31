@@ -11,6 +11,8 @@ export type ChartUIToolInvocation = UIToolInvocation<typeof chartTool>
  * Generates charts with one or multiple data series, suitable for
  * displaying time-series data, trends, or comparisons.
  * Includes a 1.5-second delay to simulate the loading state in the UI.
+ *
+ * @module shared/utils
  */
 export const chartTool = tool({
   description:

@@ -6,6 +6,8 @@ import { z } from 'zod'
  * POST /api/projects/:id/chats
  *
  * Creates a new empty chat within an existing user-owned project.
+ *
+ * @module server/api/projects
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

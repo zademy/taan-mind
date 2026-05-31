@@ -1,4 +1,14 @@
 /**
+ * Device Session Parsing Utilities
+ *
+ * Parses raw Better Auth session rows and enriches them with
+ * browser/OS metadata extracted from the `User-Agent` header.
+ * Also provides human-readable labels and session-type detection.
+ *
+ * @module shared/utils
+ */
+
+/**
  * deviceSessions.ts — Utilities for parsing, normalizing, and presenting
  * Better Auth sessions as human-readable device records.
  *

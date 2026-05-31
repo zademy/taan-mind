@@ -1,13 +1,27 @@
+/**
+ * Document Cache Composable
+ *
+ * Fetches cached Paperless document metadata from the local SQLite database
+ * via `/api/cache/documents`. Supports pagination, filtering by processing
+ * status, configurable ordering, and free-text search on title/filename.
+ *
+ * Reactive parameters (refs or plain values) are accepted via `toValue`.
+ * The composable uses `useFetch` with `watch` so results update automatically
+ * when any parameter changes.
+ *
+ * @module app/composables
+ */
 import type { MaybeRef } from 'vue'
 import type { ModelId } from '#shared/utils/models'
+import type { ProcessingStatus } from '#shared/utils/processingStatus'
 
 interface CacheDocumentListOptions {
   /** Page number (1-based). */
   page?: MaybeRef<number>
   /** Number of items per page. */
   pageSize?: MaybeRef<number>
-  /** Filter by processed status (0 = pending, 1 = processed, 2 = processing). */
-  processed?: MaybeRef<number | undefined>
+  /** Filter by cached document processing status. */
+  processed?: MaybeRef<ProcessingStatus | undefined>
   /** Field to order results by (e.g. `'-updated_at'`, `'title'`). */
   ordering?: MaybeRef<string>
   /** Global search string for title/originalFileName. */
@@ -34,8 +48,8 @@ export interface CacheDocument {
   mimeType: string | null
   /** Number of pages in the document, or `null` if unknown. */
   pageCount: number | null
-  /** Processing status: `0` = pending, `1` = processed, `2` = in progress. */
-  processed: number
+  /** Cached document processing status. */
+  processed: ProcessingStatus
   /** Model used for post-OCR enrichment, or `null` until processing completes. */
   processingModel: ModelId | null
   /** When the document was created in Paperless-ngx. */

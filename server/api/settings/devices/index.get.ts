@@ -1,3 +1,14 @@
+/**
+ * Device Sessions — GET /api/settings/devices
+ *
+ * Returns active Better Auth sessions for the current user.
+ * Only sessions with a future `expiresAt` are returned.
+ * The current session is marked with `isCurrent: true`.
+ *
+ * @uses createDeviceSession — enriches raw rows with browser/OS metadata.
+ * @module server/api/settings
+ */
+
 import { db, schema } from 'hub:db'
 import { and, desc, eq, gt } from 'drizzle-orm'
 import type { DeviceSession } from '#shared/utils/deviceSessions'

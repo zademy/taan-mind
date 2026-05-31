@@ -5,6 +5,8 @@ import type { LogicalBackupStatus } from '#shared/utils/backups'
  *
  * Returns logical backup limits, included/excluded tables, and current row
  * counts. Auth tables are always excluded from backup/restore operations.
+ *
+ * @module server/api/settings
  */
 export default defineEventHandler(async (event): Promise<LogicalBackupStatus> => {
   await requireAdminSession(event)

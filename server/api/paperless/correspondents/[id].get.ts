@@ -5,6 +5,8 @@ import { z } from 'zod'
  * GET /api/paperless/correspondents/:id
  *
  * Returns a single correspondent by ID.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessCorrespondent> => {
   const { id } = await getValidatedRouterParams(
@@ -16,10 +18,6 @@ export default defineEventHandler(async (event): Promise<PaperlessCorrespondent>
   try {
     return await client<PaperlessCorrespondent>(`/correspondents/${id}/`)
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to fetch correspondent ${id} from Paperless`
-    })
+    handlePaperlessError(error, `Failed to fetch correspondent ${id} from Paperless`)
   }
 })

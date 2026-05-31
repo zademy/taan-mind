@@ -23,10 +23,6 @@ export default defineEventHandler(async event => {
   try {
     return await client<string[]>('/search/autocomplete/' as string, { query: params })
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to search in Paperless'
-    })
+    handlePaperlessError(error, 'Failed to search in Paperless')
   }
 })

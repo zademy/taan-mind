@@ -1,3 +1,13 @@
+/**
+ * Document OCR — POST /api/paperless/documents/:id/ocr
+ *
+ * Downloads a document from Paperless and runs it through the Ollama OCR
+ * pipeline (GLM-OCR) to extract text. Supports PDF, PNG, JPEG, WebP,
+ * TIFF, GIF, BMP, DOCX, PPTX, ODT, XLSX, EML, and MSG files.
+ *
+ * @module server/api/paperless
+ */
+
 import { z } from 'zod'
 import { CONVERTIBLE_IMAGE_TYPES, TEXT_EXTRACTABLE_TYPES } from '~~/server/utils/ocr'
 
@@ -24,30 +34,12 @@ export default defineEventHandler(async event => {
     }).parse
   )
 
-  const config = useRuntimeConfig(event)
-  const baseURL = config.paperlessBaseUrl?.replace(/\/+$/, '')
-  const token = config.paperlessApiToken
-
-  if (!baseURL) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'NUXT_PAPERLESS_BASE_URL is not configured'
-    })
-  }
-
-  if (!token) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'NUXT_PAPERLESS_API_TOKEN is not configured'
-    })
-  }
+  const { apiBaseUrl, authHeaders } = getPaperlessConfig(event)
 
   // Download binary from Paperless
   const response = await $fetch
-    .raw(`${baseURL}/api/documents/${id}/download/` as string, {
-      headers: {
-        Authorization: `Token ${token}`
-      },
+    .raw(`${apiBaseUrl}/documents/${id}/download/` as string, {
+      headers: authHeaders,
       responseType: 'arrayBuffer'
     })
     .catch((error: unknown) => {

@@ -4,6 +4,8 @@ import { z } from 'zod'
  * GET /api/paperless/documents/:id/suggestions
  *
  * Returns AI-generated suggestions for a document (tags, correspondent, document type, etc.).
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async event => {
   const { id } = await getValidatedRouterParams(
@@ -18,10 +20,6 @@ export default defineEventHandler(async event => {
   try {
     return await client<Record<string, unknown>>(`/documents/${id}/suggestions/` as string)
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || 'Failed to fetch suggestions from Paperless'
-    })
+    handlePaperlessError(error, 'Failed to fetch suggestions from Paperless')
   }
 })

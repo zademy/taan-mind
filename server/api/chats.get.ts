@@ -7,6 +7,8 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm'
  * Returns standalone chats belonging to the authenticated user,
  * ordered by creation date (newest first). Project chats are listed through
  * `/api/projects` so the sidebar can keep Chats and Taanwork separate.
+ *
+ * @module server/api/chats.get.ts
  */
 export default defineEventHandler(async event => {
   const userId = getChatUserId(event)

@@ -1,3 +1,15 @@
+<!--
+  InlineAIButton.vue - AI action dropdown trigger
+  Renders a compact "AI" button that opens a grouped dropdown menu of available
+  inline actions (writing and document intelligence). Actions are sourced from
+  `shared/utils/inlineAi.ts` and dispatched via the `select` emit.
+
+  @prop visible - Controls whether the button is rendered (hidden when text is too short)
+  @prop disabled - Prevents menu open when the prompt input is disabled
+  @prop loading - Shows spinner while an inline rewrite is in progress
+
+  @emits select - Fired when the user picks an action from the dropdown
+-->
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { InlineAIActionId } from '#shared/utils/inlineAi'

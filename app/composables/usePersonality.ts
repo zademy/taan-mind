@@ -13,6 +13,8 @@ import {
  * Falls back to the default personality if the stored value is no longer supported.
  *
  * @returns An object containing the available `personalities` list and the reactive `personality` selection.
+ *
+ * @module app/composables
  */
 export function usePersonality() {
   /** Currently selected personality, persisted as a cookie. */

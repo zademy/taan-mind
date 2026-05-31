@@ -4,6 +4,8 @@
   context for a chat session. Supports server-side search with debounce.
 -->
 <script setup lang="ts">
+import { ProcessingStatus } from '#shared/utils/processingStatus'
+
 /** Shape of a single document returned by the cache API */
 interface DocumentResult {
   id: number
@@ -139,7 +141,7 @@ async function loadDocuments(query?: string) {
 
   try {
     const params: Record<string, string | number> = {
-      processed: 1,
+      processed: ProcessingStatus.Processed,
       ordering: '-updated_at',
       page_size: 10
     }

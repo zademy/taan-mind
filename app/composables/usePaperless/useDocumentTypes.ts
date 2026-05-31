@@ -17,6 +17,8 @@ interface DocumentTypeListOptions {
  *
  * @param options - Pagination, ordering, and fetch-mode options.
  * @returns A `useFetch` / `useLazyFetch` result with the paginated document-type list.
+ *
+ * @module app/composables
  */
 export function useDocumentTypes(options: DocumentTypeListOptions = {}) {
   const { page = 1, pageSize = 25, ordering = 'name', lazy = false } = options

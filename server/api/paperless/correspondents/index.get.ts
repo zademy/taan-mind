@@ -1,3 +1,11 @@
+/**
+ * Paperless Correspondents — GET /api/paperless/correspondents
+ *
+ * Lists all correspondents from Paperless-ngx with pagination and ordering.
+ *
+ * @module server/api/paperless
+ */
+
 import type { PaperlessCorrespondent, PaperlessPaginatedResponse } from '~~/shared/types/paperless'
 import { z } from 'zod'
 
@@ -25,11 +33,7 @@ export default defineEventHandler(
         query: buildPaperlessQuery(query)
       })
     } catch (error: unknown) {
-      const err = error as { statusCode?: number; statusMessage?: string }
-      throw createError({
-        statusCode: err?.statusCode || 502,
-        statusMessage: err?.statusMessage || 'Failed to fetch correspondents from Paperless'
-      })
+      handlePaperlessError(error, 'Failed to fetch correspondents from Paperless')
     }
   }
 )

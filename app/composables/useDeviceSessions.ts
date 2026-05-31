@@ -4,16 +4,15 @@ import type { DeleteDeviceSessionsResult, DeviceSession } from '#shared/utils/de
  * useDeviceSessions — Composable for fetching and revoking authenticated
  * Better Auth sessions associated with the current user.
  *
- * @remarks
  * Sessions are tied to browser/device sign-ins and expire after 30 days of
  * inactivity. Revoking a session invalidates its token immediately on the
  * server, regardless of client-side cookie state.
  *
- * @usage
  * ```ts
  * const { devices, remove, removeOthers } = useDeviceSessions()
  * ```
  *
+ * @module app/composables
  * @requires useCsrf — reads the CSRF token needed for DELETE mutations.
  */
 export function useDeviceSessions() {

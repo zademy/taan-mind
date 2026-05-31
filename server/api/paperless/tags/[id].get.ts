@@ -5,6 +5,8 @@ import { z } from 'zod'
  * GET /api/paperless/tags/:id
  *
  * Returns a single tag by ID.
+ *
+ * @module server/api/paperless
  */
 export default defineEventHandler(async (event): Promise<PaperlessTag> => {
   const { id } = await getValidatedRouterParams(
@@ -16,10 +18,6 @@ export default defineEventHandler(async (event): Promise<PaperlessTag> => {
   try {
     return await client<PaperlessTag>(`/tags/${id}/`)
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; statusMessage?: string }
-    throw createError({
-      statusCode: err?.statusCode || 502,
-      statusMessage: err?.statusMessage || `Failed to fetch tag ${id} from Paperless`
-    })
+    handlePaperlessError(error, `Failed to fetch tag ${id} from Paperless`)
   }
 })
