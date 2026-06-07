@@ -42,12 +42,14 @@ const appDataCount = computed(() => {
   )
 })
 
+/** Converts a raw byte count into a compact human-readable size (B / KB / MB). */
 function formatBytes(value: number): string {
   if (value < 1024) return `${value} B`
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
   return `${(value / 1024 / 1024).toFixed(1)} MB`
 }
 
+/** Extracts a user-safe error message from any thrown value, falling back to a generic string. */
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message
 
@@ -59,6 +61,7 @@ function getErrorMessage(error: unknown): string {
   return 'Backup operation failed'
 }
 
+/** Triggers a logical ZIP download of the app data (excluding auth tables) with the user's share-link preference. */
 async function downloadBackup() {
   downloading.value = true
 
@@ -81,6 +84,7 @@ async function downloadBackup() {
   }
 }
 
+/** Uploads the selected logical ZIP to the restore endpoint and reports the resulting row counts via toast. */
 async function restoreBackup() {
   if (!restoreFile.value || !canRestore.value) return
 

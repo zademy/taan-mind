@@ -33,6 +33,7 @@ const canSave = computed(
     !isSaving.value
 )
 
+/** Enters rename mode and seeds the draft input with the current normalized title. */
 function startRename() {
   if (!props.editable) return
 
@@ -45,6 +46,7 @@ function cancelRename() {
   isEditing.value = false
 }
 
+/** Extracts a user-safe error message from an H3/$fetch error, falling back to a generic string. */
 function getRequestErrorMessage(error: unknown) {
   const payload = error as { data?: { message?: string; statusMessage?: string }; message?: string }
   return (
@@ -55,6 +57,7 @@ function getRequestErrorMessage(error: unknown) {
   )
 }
 
+/** PATCHes the chat with the normalized draft title, emits `renamed`, and shows a success/error toast. */
 async function saveRename() {
   if (!canSave.value) return
 

@@ -42,6 +42,7 @@ watch(open, isOpen => {
   }
 })
 
+/** Fetches the current share state for the chat so the modal renders active/empty correctly. */
 async function loadShare() {
   loading.value = true
   try {
@@ -58,6 +59,7 @@ async function loadShare() {
   }
 }
 
+/** Creates a new share link for the current chat and copies the resulting URL to the clipboard. */
 async function createShare() {
   const nextShare = await mutateShare('POST', 'create')
   if (nextShare?.isActive) {
@@ -65,6 +67,7 @@ async function createShare() {
   }
 }
 
+/** Rotates the share token, invalidating the previous one, and copies the fresh URL to the clipboard. */
 async function rotateShare() {
   const nextShare = await mutateShare('PATCH', 'rotate')
   if (nextShare?.isActive) {
@@ -72,6 +75,7 @@ async function rotateShare() {
   }
 }
 
+/** Revokes the active share link so it stops resolving, then shows a confirmation toast. */
 async function revokeShare() {
   await mutateShare('DELETE', 'revoke')
   toast.add({
@@ -81,6 +85,11 @@ async function revokeShare() {
   })
 }
 
+/**
+ * Shared helper for create/rotate/revoke share-link operations.
+ * Updates the local `share` ref, surfaces errors via toast, and tracks the current action
+ * so the corresponding button can show its loading state.
+ */
 async function mutateShare(
   method: 'POST' | 'PATCH' | 'DELETE',
   nextAction: 'create' | 'rotate' | 'revoke'
@@ -105,6 +114,7 @@ async function mutateShare(
   }
 }
 
+/** Copies the provided share URL (defaulting to the active share) to the clipboard with toast feedback. */
 async function copyShareLink(url = activeShare.value?.url) {
   if (!url) return
 
@@ -127,6 +137,7 @@ async function copyShareLink(url = activeShare.value?.url) {
   }
 }
 
+/** Selects the share URL input's full contents on focus for easy manual copy. */
 function selectShareInput(event: FocusEvent) {
   if (event.target instanceof HTMLInputElement) {
     event.target.select()

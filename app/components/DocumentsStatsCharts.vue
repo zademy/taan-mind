@@ -56,6 +56,7 @@ const areaData = computed(() => props.data.byMonth.map(s => ({ month: s.label, c
 const areaCategories = computed<Record<string, BulletLegendItemInterface>>(() => ({
   count: { name: 'Documents', color: 'var(--ui-primary)' }
 }))
+/** Maps a numeric x-axis tick back to the corresponding month label for the area chart */
 const areaXFormatter = (tick: number): string => {
   return areaData.value[tick]?.month ?? ''
 }
@@ -67,6 +68,7 @@ const mimeData = computed(() =>
 const mimeCategories = computed<Record<string, BulletLegendItemInterface>>(() => ({
   count: { name: 'Count', color: 'var(--ui-text-muted)' }
 }))
+/** Maps a numeric x-axis tick back to the corresponding MIME-type label for the bar chart. */
 const mimeXFormatter = (tick: number): string => {
   return mimeData.value[tick]?.label ?? ''
 }
@@ -81,6 +83,7 @@ const docTypeData = computed(() =>
 const docTypeCategories = computed<Record<string, BulletLegendItemInterface>>(() => ({
   count: { name: 'Count', color: '#8b5cf6' }
 }))
+/** Maps a numeric x-axis tick back to the corresponding document-type label for the bar chart. */
 const docTypeXFormatter = (tick: number): string => {
   return docTypeData.value[tick]?.label ?? ''
 }

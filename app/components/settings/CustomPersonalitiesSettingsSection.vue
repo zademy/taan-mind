@@ -61,6 +61,7 @@ const canSave = computed(
     !promptTooLong.value
 )
 
+/** Extracts a user-safe error message from an H3/$fetch error, falling back to a generic string. */
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'data' in error) {
     const data = (error as { data?: { statusMessage?: string; message?: string } }).data
@@ -70,23 +71,27 @@ function getErrorMessage(error: unknown): string {
   return 'Could not save settings'
 }
 
+/** Resets the create/edit form to its empty initial state and exits edit mode. */
 function resetForm() {
   editingId.value = null
   label.value = ''
   prompt.value = ''
 }
 
+/** Loads a personality into the form for editing. */
 function editPersonality(item: CustomPersonality) {
   editingId.value = item.id
   label.value = item.label
   prompt.value = item.prompt
 }
 
+/** Collapses a prompt into a single-line 96-char preview for the personalities table. */
 function getPromptPreview(value: string): string {
   const normalized = value.replace(/\s+/g, ' ').trim()
   return normalized.length > 96 ? `${normalized.slice(0, 96)}…` : normalized
 }
 
+/** Creates a new personality or updates an existing one depending on the current edit state. */
 async function savePersonality() {
   if (!canSave.value) return
 
@@ -125,6 +130,7 @@ async function savePersonality() {
   }
 }
 
+/** Removes a custom personality and resets the active chat personality to the default if it was selected. */
 async function deletePersonality(item: CustomPersonality) {
   deletingId.value = item.id
   try {

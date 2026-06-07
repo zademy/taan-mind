@@ -49,6 +49,7 @@ onBeforeUnmount(() => {
   }
 })
 
+/** Formats an ISO timestamp for the shared-chat header using the browser locale. Returns empty string on falsy input. */
 function formatDateTime(value: string | Date | undefined) {
   if (!value) return ''
 

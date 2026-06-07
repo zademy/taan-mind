@@ -87,6 +87,7 @@ const columns: TableColumn<DeviceSession>[] = [
   }
 ]
 
+/** Formats an ISO timestamp as a localized "Mon DD, YYYY HH:mm" string, or em-dash on invalid input. */
 function formatDate(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
@@ -101,6 +102,7 @@ function formatDate(value: string): string {
   }).format(date)
 }
 
+/** Extracts a user-safe error message from an H3/$fetch error, falling back to a generic string. */
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'data' in error) {
     const data = (error as { data?: { statusMessage?: string; message?: string } }).data
@@ -110,6 +112,7 @@ function getErrorMessage(error: unknown): string {
   return 'Could not update devices'
 }
 
+/** Revokes a single non-current device session and shows the resulting toast feedback. */
 async function deleteDevice(device: DeviceSession) {
   if (device.isCurrent) return
 
@@ -132,6 +135,7 @@ async function deleteDevice(device: DeviceSession) {
   }
 }
 
+/** Revokes every device session except the current one and reports how many were removed. */
 async function deleteOtherDevices() {
   if (otherDeviceCount.value === 0) return
 

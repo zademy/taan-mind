@@ -53,6 +53,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
   }))
 ])
 
+/** Opens the inline AI actions dropdown, honoring disabled/loading/visibility guards. */
 function openMenu() {
   if (props.disabled || props.loading || !props.visible) return
   open.value = true

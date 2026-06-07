@@ -2,7 +2,7 @@
  * Nuxt application configuration.
  *
  * - Sets up UI, markdown rendering, database, and security modules.
- * - Configures runtime secrets for AI providers (MiniMax, GLM, OpenAI, Nova, OpenRouter).
+ * - Configures runtime secrets for AI providers (MiniMax, GLM, Anthropic, OpenAI, Nova, OpenRouter).
  * - Enables experimental view transitions and OpenAPI support.
  */
 export default defineNuxtConfig({
@@ -27,6 +27,8 @@ export default defineNuxtConfig({
     minimaxBaseUrl: '',
     glmApiKey: '',
     glmBaseUrl: '',
+    anthropicApiKey: '',
+    anthropicBaseUrl: '',
     openaiApiKey: '',
     openrouterApiKey: '',
     novaApiKey: '',
