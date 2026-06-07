@@ -2,7 +2,7 @@
  * AI Model Catalog — GET /api/models
  *
  * Returns all selectable AI models for the current scope.
- * Static catalog (MiniMax, GLM, OpenAI, Nova) is always included.
+ * Static catalog (MiniMax, GLM, Anthropic Claude, OpenAI, Nova) is always included.
  * Runtime-discovered models (Ollama, OpenRouter) are appended only
  * when their providers are reachable.
  *

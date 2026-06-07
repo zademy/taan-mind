@@ -89,6 +89,10 @@ function toDocumentItem(document: DocumentResult): DocumentItem {
   }
 }
 
+/**
+ * Disables a dropdown item when the selection cap has been reached,
+ * unless the item is already part of the current selection.
+ */
 function applySelectionLimit(item: DocumentItem): DocumentItem {
   return {
     ...item,
@@ -121,6 +125,7 @@ function mergeItems(documents: DocumentResult[]) {
   emitSelectedDocuments()
 }
 
+/** Emits the current selection to the parent with id+title pairs, falling back to placeholder labels. */
 function emitSelectedDocuments() {
   emit(
     'selectedDocuments',

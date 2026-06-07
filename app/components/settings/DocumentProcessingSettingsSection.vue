@@ -60,6 +60,7 @@ watch(
   { immediate: true }
 )
 
+/** Extracts a user-safe error message from an H3/$fetch error, falling back to a generic string. */
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'data' in error) {
     const data = (error as { data?: { statusMessage?: string; message?: string } }).data
@@ -69,6 +70,7 @@ function getErrorMessage(error: unknown): string {
   return 'Could not save settings'
 }
 
+/** Persists the selected enrichment model to the app_settings table for the document processing pipeline. */
 async function saveProcessingSettings() {
   if (!canSaveProcessingSettings.value) return
 

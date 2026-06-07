@@ -94,6 +94,7 @@ watch(
   }
 )
 
+/** Runs the selected inline AI action using the current prompt text, model, and attached document IDs. */
 async function runAction(action: InlineAIActionId) {
   await run({
     action,
@@ -116,6 +117,7 @@ async function retryAction() {
   })
 }
 
+/** Accepts the current AI draft, propagates it to the parent via v-model, and shows a confirmation toast. */
 function accept() {
   const action = activeAction.value
   const value = acceptDraft()

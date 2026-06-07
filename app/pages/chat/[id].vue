@@ -164,12 +164,14 @@ function initChat() {
   }
 }
 
+/** Extracts a user-friendly error message from a chat stream error, with provider-specific fallbacks. */
 function getChatErrorMessage(error: Error): string {
   const message = error.message || 'The selected AI provider returned an error.'
   const parsedMessage = getParsedErrorMessage(message)
   return parsedMessage || message
 }
 
+/** Attempts to extract a friendly message from a JSON-encoded error payload; returns undefined if not JSON. */
 function getParsedErrorMessage(message: string): string | undefined {
   if (!message.trim().startsWith('{')) {
     return undefined
@@ -265,6 +267,7 @@ async function handleSubmit(e?: Event) {
   input.value = ''
 }
 
+/** Reconciles the chat's attached document IDs with the document selector state. */
 async function syncDocumentContext() {
   if (!data.value || !isOwner.value) return
   if (arraysEqual(selectedDocIds.value, data.value.documentIds)) return
@@ -298,10 +301,12 @@ async function syncDocumentContext() {
   }
 }
 
+/** Returns true when both arrays have the same length and equal elements in the same order. */
 function arraysEqual(a: number[], b: number[]) {
   return a.length === b.length && a.every((value, index) => value === b[index])
 }
 
+/** Returns the embedded usage payload from an unknown chat response, or null if none is present. */
 function getChatUsage(data: unknown): ChatUsage | null {
   const usage = (data as { usage?: ChatUsage } | undefined)?.usage
   if (!usage) return null

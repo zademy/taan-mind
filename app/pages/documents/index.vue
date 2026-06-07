@@ -318,6 +318,7 @@ function formatDuration(doc: CacheDocument): string {
   return `${seconds}s`
 }
 
+/** Formats an ISO date string for the documents table, returning em-dash for null/invalid input. */
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleString('en-US', {
@@ -330,6 +331,7 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
+/** Formats a stored processing-model identifier into a human-readable label, or em-dash when unset. */
 function formatProcessingModel(model: CacheDocument['processingModel']): string {
   if (!model) return '—'
 
@@ -343,6 +345,7 @@ function formatProcessingModel(model: CacheDocument['processingModel']): string 
   return model
 }
 
+/** Returns the Nuxt UI badge color name for a given document processing status. */
 function getProcessingStatusBadgeColor(status: ProcessingStatus) {
   switch (status) {
     case ProcessingStatus.Processed:

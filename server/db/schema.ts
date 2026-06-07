@@ -1,9 +1,25 @@
+// fallow-ignore-file
 /**
  * @file SQLite database schema definitions.
  *
  * Defines all tables (chats, messages, custom personalities, app settings,
  * Paperless document cache), their relations, indexes, and shared column
  * helpers using Drizzle ORM's SQLite adapter.
+ *
+ * @why-this-file-is-not-deleted-by-fallow
+ * This module is the auto-detected Drizzle schema source for NuxtHub's
+ * `hub:db` binding (`nuxt.config.ts` -> `hub: { db: 'sqlite' }`). It is
+ * loaded at runtime by `@nuxthub/core` even when no other TypeScript file
+ * in the repo imports any of its exports. Static analysis tools such as
+ * Fallow will therefore flag this file as `unused_file` or its exports as
+ * unused; both signals are known false positives.
+ *
+ * Do NOT delete or refactor this file based on Fallow output alone. If a
+ * schema change is needed, edit the table definitions here, regenerate
+ * migrations with `pnpm db:generate`, and apply them with `pnpm db:migrate`.
+ *
+ * See `docs/architecture/nuxt4-auto-imports.md` for the full set of Nuxt 4
+ * auto-import directories that Fallow also cannot see.
  */
 import { sqliteTable, text, integer, index, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'

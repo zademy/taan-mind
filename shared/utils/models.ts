@@ -1,12 +1,19 @@
 /**
  * @file AI model registry, type definitions, and validation helpers.
  *
- * Defines the static model catalog (MiniMax, GLM, OpenAI, Nova), dynamic runtime model support
- * (Ollama, OpenRouter), document processing settings types, and type guards used across server
- * and client to validate and resolve model identifiers.
+ * Defines the static model catalog (MiniMax, GLM, Anthropic Claude, OpenAI, Nova), dynamic
+ * runtime model support (Ollama, OpenRouter), document processing settings types, and type
+ * guards used across server and client to validate and resolve model identifiers.
  */
 /** Supported AI model provider names. */
-export type ModelProvider = 'minimax' | 'glm' | 'openai' | 'nova' | 'ollama' | 'openrouter'
+export type ModelProvider =
+  | 'minimax'
+  | 'glm'
+  | 'anthropic'
+  | 'openai'
+  | 'nova'
+  | 'ollama'
+  | 'openrouter'
 
 /** Union of all statically configured model identifiers in `provider/modelId` format. */
 export type StaticModelId =
@@ -14,6 +21,9 @@ export type StaticModelId =
   | 'glm/glm-5'
   | 'glm/glm-5.1'
   | 'glm/glm-5-turbo'
+  | 'anthropic/claude-opus-4-8'
+  | 'anthropic/claude-sonnet-4-6'
+  | 'anthropic/claude-haiku-4-5-20251001'
   | 'openai/gpt-5.5'
   | 'openai/gpt-5.4'
   | 'openai/gpt-5.4-mini'
@@ -72,6 +82,24 @@ export const MODELS: ModelOption[] = [
   { label: 'GLM 5', value: 'glm/glm-5', icon: 'i-lucide-sparkles', provider: 'glm' },
   { label: 'GLM 5.1', value: 'glm/glm-5.1', icon: 'i-lucide-sparkles', provider: 'glm' },
   { label: 'GLM 5 Turbo', value: 'glm/glm-5-turbo', icon: 'i-lucide-bot', provider: 'glm' },
+  {
+    label: 'Claude Opus 4.8',
+    value: 'anthropic/claude-opus-4-8',
+    icon: 'i-lucide-brain',
+    provider: 'anthropic'
+  },
+  {
+    label: 'Claude Sonnet 4.6',
+    value: 'anthropic/claude-sonnet-4-6',
+    icon: 'i-lucide-sparkles',
+    provider: 'anthropic'
+  },
+  {
+    label: 'Claude Haiku 4.5',
+    value: 'anthropic/claude-haiku-4-5-20251001',
+    icon: 'i-lucide-zap',
+    provider: 'anthropic'
+  },
   {
     label: 'OpenAI GPT-5.5',
     value: 'openai/gpt-5.5',
@@ -336,7 +364,7 @@ export function isSelectableModel(value: string): value is ModelId {
  * Type guard that checks whether a model can be used for document enrichment.
  *
  * Nova models are chat-only for now, so background document processing keeps
- * using MiniMax, GLM, OpenAI, OpenRouter, or non-OCR Ollama models.
+ * using MiniMax, GLM, Anthropic Claude, OpenAI, OpenRouter, or non-OCR Ollama models.
  *
  * @param value - The model ID to check.
  * @returns `true` if the model can be selected for document processing.

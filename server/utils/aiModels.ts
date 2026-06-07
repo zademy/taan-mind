@@ -2,11 +2,12 @@
  * @file AI model resolution and availability validation.
  *
  * Maps model identifiers (e.g., `minimax/MiniMax-M2.7`) to AI SDK language model
- * instances by selecting the appropriate provider client with credentials from
- * runtime config. Also validates that runtime-discovered models exist since
- * Ollama/OpenRouter models can be added, removed, or deprecated while the application runs.
+ * instances by selecting the appropriate provider client with credentials from runtime config.
+ * Also validates that runtime-discovered models exist since Ollama/OpenRouter models can be
+ * added, removed, or deprecated while the application runs.
  */
 import type { H3Event } from 'h3'
+import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createMinimax } from 'vercel-minimax-ai-provider'
@@ -46,6 +47,7 @@ interface LanguageModelProviderOptionsConfig {
 const SUPPORTED_PROVIDERS: ProviderName[] = [
   'minimax',
   'glm',
+  'anthropic',
   'openai',
   'nova',
   'ollama',
@@ -65,6 +67,10 @@ export interface LanguageModelRuntimeConfig extends OllamaRuntimeConfig, OpenRou
   glmApiKey?: unknown
   /** GLM OpenAI-compatible base URL. */
   glmBaseUrl?: unknown
+  /** Anthropic API key for Claude models. */
+  anthropicApiKey?: unknown
+  /** Optional Anthropic API base URL override. */
+  anthropicBaseUrl?: unknown
   /** OpenAI API key. */
   openaiApiKey?: unknown
   /** Nova API key. */
@@ -129,8 +135,8 @@ function getRuntimeString(value: unknown): string | undefined {
  * Resolves a model identifier into an AI SDK language model instance.
  *
  * Uses the provider prefix in the model identifier to select the correct
- * provider client (MiniMax, GLM, OpenAI, Nova, OpenRouter, or Ollama) and configures it
- * with the appropriate API key and base URL from runtime config.
+ * provider client (MiniMax, GLM, Anthropic, OpenAI, Nova, OpenRouter, or Ollama) and
+ * configures it with the appropriate API key and base URL from runtime config.
  *
  * @param model - The full model identifier (e.g., `minimax/MiniMax-M2.7`).
  * @param event - The H3 event, used to access runtime configuration.
@@ -182,6 +188,21 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
     })
 
     return glm(modelId)
+  }
+
+  // Configure Anthropic Claude provider
+  if (provider === 'anthropic') {
+    const anthropicBaseUrl =
+      getRuntimeString(config.anthropicBaseUrl) ?? process.env.ANTHROPIC_BASE_URL
+    const anthropic = createAnthropic({
+      apiKey: requireRuntimeSecret(
+        getRuntimeString(config.anthropicApiKey) ?? process.env.ANTHROPIC_API_KEY,
+        'Anthropic API key'
+      ),
+      ...(anthropicBaseUrl ? { baseURL: stripTrailingSlash(anthropicBaseUrl) } : {})
+    })
+
+    return anthropic(modelId)
   }
 
   // Configure OpenAI provider through the Responses API for streaming/reasoning support
