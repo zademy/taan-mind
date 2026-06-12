@@ -13,6 +13,8 @@ import sharp from 'sharp'
 import { parseOffice } from 'officeparser'
 import ExcelJS from 'exceljs'
 import { simpleParser } from 'mailparser'
+import type { AIUsageMetrics } from '#shared/utils/aiUsage'
+import { normalizeOllamaUsage } from './aiUsage'
 import { useOllamaClient } from './ollama'
 
 /** Response from the Ollama `/api/generate` endpoint. */
@@ -27,6 +29,14 @@ interface OllamaGenerateResponse {
   total_duration?: number
   /** Number of tokens evaluated during generation. */
   eval_count?: number
+  /** Number of prompt tokens evaluated before generation. */
+  prompt_eval_count?: number
+}
+
+/** Native Ollama OCR response normalized for callers. */
+interface OcrImageResult {
+  text: string
+  usage: AIUsageMetrics
 }
 
 /** Represents the text extracted from a single page during OCR processing. */
@@ -49,6 +59,10 @@ interface OcrResult {
   totalPages: number
   /** Whether the text was extracted via OCR or direct text extraction. */
   method: 'ocr' | 'text-extraction'
+  /** Full `ollama/modelName` identifier, or null for direct text extraction. */
+  model: string | null
+  /** Aggregated provider-reported usage, or null when no AI model was used. */
+  usage: AIUsageMetrics | null
 }
 
 /** Image MIME types that can be converted to PNG for OCR processing (e.g., TIFF, GIF, BMP). */
@@ -113,12 +127,56 @@ export async function ocrImage(
   model: string,
   imageBase64: string,
   prompt: string = 'Text Recognition'
-): Promise<string> {
+): Promise<OcrImageResult> {
   const response = await client<OllamaGenerateResponse>('/api/generate', {
     method: 'POST',
     body: { model, prompt, images: [imageBase64], stream: false }
   })
-  return response.response
+
+  return {
+    text: response.response,
+    usage: normalizeOllamaUsage({
+      promptEvalCount: response.prompt_eval_count,
+      evalCount: response.eval_count
+    })
+  }
+}
+
+/** Sums a metric only when every OCR page reported it. */
+function sumCompleteMetric(values: Array<number | null>): number | null {
+  if (values.length === 0 || values.some(value => value == null)) {
+    return null
+  }
+
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0)
+}
+
+/** Aggregates per-page Ollama usage without inventing missing counters. */
+function aggregateOcrUsage(results: OcrImageResult[]): AIUsageMetrics {
+  return {
+    inputTokens: sumCompleteMetric(results.map(result => result.usage.inputTokens)),
+    outputTokens: sumCompleteMetric(results.map(result => result.usage.outputTokens)),
+    totalTokens: sumCompleteMetric(results.map(result => result.usage.totalTokens)),
+    inputTokenDetails: {
+      noCacheTokens: sumCompleteMetric(
+        results.map(result => result.usage.inputTokenDetails.noCacheTokens)
+      ),
+      cacheReadTokens: sumCompleteMetric(
+        results.map(result => result.usage.inputTokenDetails.cacheReadTokens)
+      ),
+      cacheWriteTokens: sumCompleteMetric(
+        results.map(result => result.usage.inputTokenDetails.cacheWriteTokens)
+      )
+    },
+    outputTokenDetails: {
+      textTokens: sumCompleteMetric(
+        results.map(result => result.usage.outputTokenDetails.textTokens)
+      ),
+      reasoningTokens: sumCompleteMetric(
+        results.map(result => result.usage.outputTokenDetails.reasoningTokens)
+      )
+    }
+  }
 }
 
 /**
@@ -235,7 +293,9 @@ export async function ocrDocument(
     return {
       pages: [{ page: 1, text }],
       totalPages: 1,
-      method: 'text-extraction'
+      method: 'text-extraction',
+      model: null,
+      usage: null
     }
   }
 
@@ -246,39 +306,50 @@ export async function ocrDocument(
   if (CONVERTIBLE_IMAGE_TYPES.has(mimeType)) {
     const pngBuffer = await convertImageToPng(fileBuffer)
     const base64 = pngBuffer.toString('base64')
-    const text = await ocrImage(client, model, base64, 'Text Recognition')
+    const result = await ocrImage(client, model, base64, 'Text Recognition')
     return {
-      pages: [{ page: 1, text }],
+      pages: [{ page: 1, text: result.text }],
       totalPages: 1,
-      method: 'ocr'
+      method: 'ocr',
+      model: `ollama/${model}`,
+      usage: result.usage
     }
   }
 
   // Step 3: PDF — convert pages to images then OCR
   if (mimeType === 'application/pdf') {
     const images = await pdfToImages(fileBuffer)
-    const pages: OcrPageResult[] = []
+    const pageResults: Array<OcrPageResult & { usage: AIUsageMetrics }> = []
 
     for (let start = 0; start < images.length; start += PDF_OCR_PAGE_CONCURRENCY) {
       const batch = images.slice(start, start + PDF_OCR_PAGE_CONCURRENCY)
       const batchPages = await Promise.all(
         batch.map(async (image, index) => {
           const page = start + index + 1
-          const text = await ocrImage(client, model, image, 'Text Recognition')
-          return { page, text }
+          const result = await ocrImage(client, model, image, 'Text Recognition')
+          return { page, text: result.text, usage: result.usage }
         })
       )
-      pages.push(...batchPages)
+      pageResults.push(...batchPages)
     }
-    return { pages, totalPages: images.length, method: 'ocr' }
+
+    return {
+      pages: pageResults.map(({ page, text }) => ({ page, text })),
+      totalPages: images.length,
+      method: 'ocr',
+      model: `ollama/${model}`,
+      usage: aggregateOcrUsage(pageResults)
+    }
   }
 
   // Direct images (PNG, JPEG, WebP)
   const base64 = fileBuffer.toString('base64')
-  const text = await ocrImage(client, model, base64, 'Text Recognition')
+  const result = await ocrImage(client, model, base64, 'Text Recognition')
   return {
-    pages: [{ page: 1, text }],
+    pages: [{ page: 1, text: result.text }],
     totalPages: 1,
-    method: 'ocr'
+    method: 'ocr',
+    model: `ollama/${model}`,
+    usage: result.usage
   }
 }

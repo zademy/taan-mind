@@ -241,7 +241,8 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
         getRuntimeString(config.openrouterApiKey) ?? process.env.OPENROUTER_API_KEY,
         'OpenRouter API key'
       ),
-      baseURL: OPENROUTER_OPENAI_BASE_URL
+      baseURL: OPENROUTER_OPENAI_BASE_URL,
+      includeUsage: true
     })
 
     return openrouter(modelId)
@@ -251,7 +252,8 @@ export function resolveLanguageModelFromConfig(model: string, config: LanguageMo
   const ollama = createOpenAICompatible({
     name: 'ollama',
     apiKey: 'ollama',
-    baseURL: getOllamaOpenAIBaseUrlFromConfig(config)
+    baseURL: getOllamaOpenAIBaseUrlFromConfig(config),
+    includeUsage: true
   })
 
   return ollama(modelId)

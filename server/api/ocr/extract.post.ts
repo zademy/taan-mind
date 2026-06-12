@@ -20,6 +20,8 @@ const SUPPORTED_TYPES = new Set([
  * @returns The extracted text grouped by pages along with the method used.
  */
 export default defineEventHandler(async event => {
+  const userId = getChatUserId(event)
+
   // Parse the multipart form data from the request
   const formData = await readMultipartFormData(event)
   if (!formData || formData.length === 0) {
@@ -39,6 +41,17 @@ export default defineEventHandler(async event => {
 
   // Process the file buffer using the OCR pipeline
   const result = await ocrDocument(event, Buffer.from(file.data), file.type)
+
+  if (result.model && result.usage) {
+    await recordAIUsage({
+      userId,
+      model: result.model,
+      operation: 'ocr',
+      usage: result.usage,
+      finishReason: 'stop'
+    })
+  }
+
   return {
     filename: file.filename,
     contentType: file.type,

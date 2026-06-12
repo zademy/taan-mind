@@ -23,6 +23,7 @@ import { INLINE_AI_MAX_INPUT_CHARACTERS, isInlineAIActionId } from '#shared/util
 import type { InlineAIActionId } from '#shared/utils/inlineAi'
 import { isSelectableModel } from '#shared/utils/models'
 import { getAIUserErrorMessage } from '../../utils/aiErrors'
+import { normalizeLanguageModelUsage, recordAIUsage } from '../../utils/aiUsage'
 import {
   assertLanguageModelAvailable,
   getLanguageModelProviderOptions,
@@ -68,7 +69,7 @@ const inlineAssistantBodySchema = z.object({
 
 export default defineEventHandler(async event => {
   // Requires an authenticated user before any provider request.
-  getChatUserId(event)
+  const userId = getChatUserId(event)
 
   const { model, action, text, documentIds } = await readValidatedBody(
     event,
@@ -100,14 +101,25 @@ export default defineEventHandler(async event => {
         documentContext
       }),
       experimental_transform: smoothStream(),
-      onFinish: ({ finishReason, totalUsage }) => {
+      onFinish: async ({ finishReason, totalUsage, response }) => {
+        const usage = normalizeLanguageModelUsage(totalUsage)
+
         console.info('[InlineAI] generation completed', {
           action: inlineAction,
           model,
           finishReason,
-          inputTokens: totalUsage.inputTokens,
-          outputTokens: totalUsage.outputTokens,
-          totalTokens: totalUsage.totalTokens
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens
+        })
+
+        await recordAIUsage({
+          userId,
+          model,
+          operation: 'inline-assistant',
+          usage,
+          finishReason,
+          providerResponseId: response.id
         })
       }
     })

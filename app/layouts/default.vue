@@ -403,6 +403,21 @@ defineShortcuts({
             @click="open = false"
           />
 
+          <UButton
+            icon="i-lucide-chart-no-axes-combined"
+            :label="collapsed ? undefined : 'Token usage'"
+            :variant="route.path === '/usage' ? 'soft' : 'ghost'"
+            block
+            to="/usage"
+            active-class=""
+            inactive-class=""
+            :class="[
+              'transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]',
+              !collapsed && 'justify-start'
+            ]"
+            @click="open = false"
+          />
+
           <UTabs
             v-if="!collapsed"
             v-model="sidebarMode"

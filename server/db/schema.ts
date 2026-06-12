@@ -344,6 +344,59 @@ export const chatDocuments = sqliteTable(
   ]
 )
 
+/**
+ * AI usage events — append-only provider-reported token telemetry.
+ *
+ * Interactive events are attributed to a user. Background document processing
+ * uses a null user ID and appears only in the administrator global scope.
+ */
+export const aiUsageEvents = sqliteTable(
+  'ai_usage_events',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    chatId: text('chat_id').references(() => chats.id, { onDelete: 'set null' }),
+    documentId: integer('document_id').references(() => paperlessDocuments.id, {
+      onDelete: 'set null'
+    }),
+    provider: text('provider', {
+      enum: ['minimax', 'glm', 'anthropic', 'openai', 'nova', 'ollama', 'openrouter']
+    }).notNull(),
+    model: text('model').notNull(),
+    operation: text('operation', {
+      enum: [
+        'chat',
+        'chat-title',
+        'inline-assistant',
+        'document-format',
+        'document-metadata',
+        'ocr'
+      ]
+    }).notNull(),
+    usageAvailable: integer('usage_available', { mode: 'boolean' }).notNull().default(false),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    totalTokens: integer('total_tokens'),
+    noCacheTokens: integer('no_cache_tokens'),
+    cacheReadTokens: integer('cache_read_tokens'),
+    cacheWriteTokens: integer('cache_write_tokens'),
+    textTokens: integer('text_tokens'),
+    reasoningTokens: integer('reasoning_tokens'),
+    finishReason: text('finish_reason'),
+    providerResponseId: text('provider_response_id'),
+    ...timestamps
+  },
+  table => [
+    index('ai_usage_events_user_created_at_idx').on(table.userId, table.createdAt),
+    index('ai_usage_events_created_at_idx').on(table.createdAt),
+    index('ai_usage_events_model_created_at_idx').on(table.model, table.createdAt),
+    index('ai_usage_events_provider_created_at_idx').on(table.provider, table.createdAt),
+    index('ai_usage_events_operation_created_at_idx').on(table.operation, table.createdAt)
+  ]
+)
+
 /** Defines the relationships between a chat and its records/project. */
 export const chatsRelations = relations(chats, ({ one, many }) => ({
   project: one(projects, {
@@ -368,6 +421,22 @@ export const chatDocumentsRelations = relations(chatDocuments, ({ one }) => ({
   }),
   document: one(paperlessDocuments, {
     fields: [chatDocuments.documentId],
+    references: [paperlessDocuments.id]
+  })
+}))
+
+/** Defines optional resource relationships for AI usage telemetry. */
+export const aiUsageEventsRelations = relations(aiUsageEvents, ({ one }) => ({
+  user: one(user, {
+    fields: [aiUsageEvents.userId],
+    references: [user.id]
+  }),
+  chat: one(chats, {
+    fields: [aiUsageEvents.chatId],
+    references: [chats.id]
+  }),
+  document: one(paperlessDocuments, {
+    fields: [aiUsageEvents.documentId],
     references: [paperlessDocuments.id]
   })
 }))

@@ -571,11 +571,11 @@ const columns: TableColumn<CacheDocument>[] = [
 <template>
   <UDashboardPanel id="documents" :ui="{ body: 'p-0 sm:p-0 overflow-y-auto' }">
     <template #header>
-      <Navbar />
+      <Navbar :floating="false" />
     </template>
 
     <template #body>
-      <div class="px-4 sm:px-6 pt-14 pb-20 space-y-4">
+      <div class="px-4 sm:px-6 pt-4 pb-20 space-y-4">
         <!-- Page title and document count -->
         <div>
           <div>
