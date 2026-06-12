@@ -21,6 +21,7 @@ import { ProcessingStatus } from '#shared/utils/processingStatus'
 import { cleanText } from '../utils/textCleaner'
 import type { LanguageModelRuntimeConfig } from '../utils/aiModels'
 import { getLanguageModelProviderOptions, resolveLanguageModelFromConfig } from '../utils/aiModels'
+import { normalizeLanguageModelUsage, recordAIUsage } from '../utils/aiUsage'
 import { getDocumentProcessingSettings } from '../utils/documentProcessingSettings'
 import {
   createPaperlessClient,
@@ -259,7 +260,13 @@ export default defineNitroPlugin(nitroApp => {
         consola.info(
           `[Document Processor] Doc #${doc.id} — Formatting content with ${enrichmentModel}...`
         )
-        const aiContent = await formatWithAI(cleanedOcrText, doc.title, enrichmentModel, config)
+        const aiContent = await formatWithAI(
+          cleanedOcrText,
+          doc.title,
+          doc.id,
+          enrichmentModel,
+          config
+        )
         consola.info(
           `[Document Processor] Doc #${doc.id} — Content formatted (${aiContent.length} characters)`
         )
@@ -277,7 +284,13 @@ export default defineNitroPlugin(nitroApp => {
         consola.info(
           `[Document Processor] Doc #${doc.id} — Extracting metadata with ${enrichmentModel}...`
         )
-        const metadata = await extractMetadata(cleanedAiContent, doc.title, enrichmentModel, config)
+        const metadata = await extractMetadata(
+          cleanedAiContent,
+          doc.title,
+          doc.id,
+          enrichmentModel,
+          config
+        )
         consola.info(
           `[Document Processor] Doc #${doc.id} — Metadata extracted: ${JSON.stringify(metadata)}`
         )
@@ -512,10 +525,11 @@ async function markDocumentAsFailed(documentId: number, attempts: number): Promi
 async function formatWithAI(
   rawText: string,
   documentTitle: string,
+  documentId: number,
   enrichmentModel: ModelId,
   config: DocumentProcessorConfig
 ): Promise<string> {
-  const { text } = await generateText({
+  const { text, totalUsage, finishReason, response } = await generateText({
     model: resolveLanguageModelFromConfig(enrichmentModel, config),
     providerOptions: getLanguageModelProviderOptions(enrichmentModel),
     system: `You are a document text formatter. Your task is to clean and format OCR-extracted text from a document titled "${documentTitle}".
@@ -528,6 +542,15 @@ Instructions:
 - Maintain the original document structure (lists, tables, sections) as closely as possible
 - If the text contains numbers, dates, or proper nouns, ensure they are correctly formatted`,
     prompt: rawText
+  })
+
+  await recordAIUsage({
+    documentId,
+    model: enrichmentModel,
+    operation: 'document-format',
+    usage: normalizeLanguageModelUsage(totalUsage),
+    finishReason,
+    providerResponseId: response.id
   })
 
   return text
@@ -549,6 +572,7 @@ Instructions:
 async function extractMetadata(
   formattedContent: string,
   existingTitle: string,
+  documentId: number,
   enrichmentModel: ModelId,
   config: DocumentProcessorConfig
 ): Promise<{
@@ -557,7 +581,7 @@ async function extractMetadata(
   suggestedCorrespondent?: string
   suggestedDocumentType?: string
 }> {
-  const { text } = await generateText({
+  const { text, totalUsage, finishReason, response } = await generateText({
     model: resolveLanguageModelFromConfig(enrichmentModel, config),
     providerOptions: getLanguageModelProviderOptions(enrichmentModel),
     system: `You are a document metadata extractor. Analyze the provided document content and return a JSON object with the following fields:
@@ -573,6 +597,15 @@ Return ONLY the JSON object, no additional text or markdown formatting.`,
 
 Document content:
 ${formattedContent}`
+  })
+
+  await recordAIUsage({
+    documentId,
+    model: enrichmentModel,
+    operation: 'document-metadata',
+    usage: normalizeLanguageModelUsage(totalUsage),
+    finishReason,
+    providerResponseId: response.id
   })
 
   try {

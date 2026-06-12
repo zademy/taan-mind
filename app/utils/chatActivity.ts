@@ -10,30 +10,13 @@
 import { getToolName, isToolUIPart } from 'ai'
 import type { UIMessage } from 'ai'
 import { isToolStreaming } from '@nuxt/ui/utils/ai'
+import type { AIUsageMetrics } from '#shared/utils/aiUsage'
 
 /** Current lifecycle state of a chat conversation. */
 export type ChatStatus = 'ready' | 'submitted' | 'streaming' | 'error'
 
 /** Token usage metrics reported by the AI provider after a generation completes. */
-export type ChatUsage = {
-  /** Number of input (prompt) tokens consumed, or `null` if not reported. */
-  inputTokens: number | null
-  /** Number of output (completion) tokens generated, or `null` if not reported. */
-  outputTokens: number | null
-  /** Total tokens (input + output), or `null` if not reported. */
-  totalTokens: number | null
-  /** Breakdown of input token categories (cached, non-cached, cache writes). */
-  inputTokenDetails?: {
-    noCacheTokens: number | null
-    cacheReadTokens: number | null
-    cacheWriteTokens: number | null
-  }
-  /** Breakdown of output token categories (text, reasoning). */
-  outputTokenDetails?: {
-    textTokens: number | null
-    reasoningTokens: number | null
-  }
-}
+export type ChatUsage = AIUsageMetrics
 
 /** Represents a single tool invocation displayed in the activity panel. */
 export type ToolActivity = {

@@ -7,7 +7,7 @@
  * @module server/api/chats
  */
 
-import type { LanguageModelUsage, UIMessage } from 'ai'
+import type { UIMessage } from 'ai'
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -27,6 +27,7 @@ import {
   resolveLanguageModel
 } from '../../utils/aiModels'
 import { getAIUserErrorMessage } from '../../utils/aiErrors'
+import { normalizeLanguageModelUsage, recordAIUsage } from '../../utils/aiUsage'
 import {
   MAX_CHAT_DOCUMENTS,
   assertChatDocumentsAvailable,
@@ -111,7 +112,7 @@ export default defineEventHandler(async event => {
     let title = createFallbackChatTitle(messages[0])
 
     try {
-      const { text } = await generateText({
+      const { text, totalUsage, finishReason, response } = await generateText({
         model: resolveLanguageModel(model, event),
         maxRetries: 0,
         providerOptions: getLanguageModelProviderOptions(model),
@@ -122,6 +123,16 @@ export default defineEventHandler(async event => {
           - Do not use quotes (' or ") or colons (:) or any other punctuation
           - Do not use markdown, just plain text`,
         prompt: JSON.stringify(messages[0])
+      })
+
+      await recordAIUsage({
+        userId,
+        chatId: chat.id,
+        model,
+        operation: 'chat-title',
+        usage: normalizeLanguageModelUsage(totalUsage),
+        finishReason,
+        providerResponseId: response.id
       })
 
       title = normalizeChatTitle(text) || title
@@ -195,14 +206,26 @@ export default defineEventHandler(async event => {
         },
         stopWhen: stepCountIs(5),
         experimental_transform: smoothStream(),
-        onFinish: ({ totalUsage, finishReason }) => {
+        onFinish: async ({ totalUsage, finishReason, response }) => {
+          const usage = normalizeLanguageModelUsage(totalUsage)
+
           writer.write({
             type: 'data-chat-usage',
             data: {
-              usage: serializeUsage(totalUsage),
+              usage,
               finishReason
             },
             transient: true
+          })
+
+          await recordAIUsage({
+            userId,
+            chatId: chat.id,
+            model,
+            operation: 'chat',
+            usage,
+            finishReason,
+            providerResponseId: response.id
           })
         }
       })
@@ -265,21 +288,4 @@ function normalizeChatTitle(value: string): string {
     .trim()
     .slice(0, 30)
     .trim()
-}
-
-function serializeUsage(usage: LanguageModelUsage) {
-  return {
-    inputTokens: usage.inputTokens ?? null,
-    outputTokens: usage.outputTokens ?? null,
-    totalTokens: usage.totalTokens ?? null,
-    inputTokenDetails: {
-      noCacheTokens: usage.inputTokenDetails.noCacheTokens ?? null,
-      cacheReadTokens: usage.inputTokenDetails.cacheReadTokens ?? null,
-      cacheWriteTokens: usage.inputTokenDetails.cacheWriteTokens ?? null
-    },
-    outputTokenDetails: {
-      textTokens: usage.outputTokenDetails.textTokens ?? null,
-      reasoningTokens: usage.outputTokenDetails.reasoningTokens ?? null
-    }
-  }
 }
