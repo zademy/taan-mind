@@ -106,4 +106,4 @@ jobs:
             BUILD_NODE_OPTIONS=${{ env.BUILD_NODE_OPTIONS }}
           cache-from: type=gha,scope=taan-mind
           cache-to: type=gha,mode=max,scope=taan-mind
-          provenance: mode=max
+          provenance: false
