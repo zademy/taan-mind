@@ -39,10 +39,18 @@ env:
   PUBLISH_TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
 jobs:
-  build-and-push:
+  build:
     if: ${{ github.event_name != 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch }}
     runs-on: ubuntu-latest
     environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            suffix: amd64
+          - platform: linux/arm64
+            suffix: arm64
 
     steps:
       - name: Checkout repository
@@ -68,6 +76,7 @@ jobs:
           fi
 
       - name: Set up QEMU
+        if: matrix.platform == 'linux/arm64'
         uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
 
       - name: Set up Docker Buildx
@@ -86,8 +95,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ env.PUBLISH_TAG }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' || inputs.publish_latest }}
+            type=raw,value=${{ env.PUBLISH_TAG }}-${{ matrix.suffix }}
 
       - name: Build and push image
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
@@ -97,13 +105,50 @@ jobs:
           target: runtime
           push: true
           pull: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
             NODE_VERSION=${{ env.NODE_VERSION }}
             PNPM_VERSION=${{ env.PNPM_VERSION }}
             BUILD_NODE_OPTIONS=${{ env.BUILD_NODE_OPTIONS }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           provenance: false
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Create multi-arch manifests
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          PUBLISH_LATEST: ${{ github.event_name == 'release' || inputs.publish_latest }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            -t "${IMAGE}:${PUBLISH_TAG}" \
+            "${IMAGE}:${PUBLISH_TAG}-amd64" \
+            "${IMAGE}:${PUBLISH_TAG}-arm64"
+
+          if [[ "${PUBLISH_LATEST}" == "true" ]]; then
+            docker buildx imagetools create \
+              -t "${IMAGE}:latest" \
+              "${IMAGE}:${PUBLISH_TAG}-amd64" \
+              "${IMAGE}:${PUBLISH_TAG}-arm64"
+          fi
+
+      - name: Inspect published manifest
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: docker buildx imagetools inspect "${IMAGE}:${PUBLISH_TAG}"
