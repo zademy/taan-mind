@@ -9,9 +9,6 @@ jobs:
   release-on-merge:
     runs-on: ubuntu-latest
 
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
-
     permissions:
       contents: write
 
@@ -21,18 +18,7 @@ jobs:
     steps:
       - name: Create GitHub Release
         id: release
-        uses: dexwritescode/release-on-merge-action@8e5ef5b2f806c694dd91b150ff730aace48a65db # v1.1.0
+        uses: dexwritescode/release-on-merge-action@v1
         with:
           initial-version: '1.0.0'
           tag-prefix: v
-
-  publish-docker:
-    needs: release-on-merge
-    if: ${{ needs.release-on-merge.outputs.tag != '' }}
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/publish-docker.yml
-    with:
-      tag: ${{ needs.release-on-merge.outputs.tag }}
-      publish_latest: true
