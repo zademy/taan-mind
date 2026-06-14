@@ -104,6 +104,6 @@ jobs:
             NODE_VERSION=${{ env.NODE_VERSION }}
             PNPM_VERSION=${{ env.PNPM_VERSION }}
             BUILD_NODE_OPTIONS=${{ env.BUILD_NODE_OPTIONS }}
-          cache-from: type=gha,scope=taan-mind
-          cache-to: type=gha,mode=max,scope=taan-mind
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           provenance: false
