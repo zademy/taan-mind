@@ -29,7 +29,7 @@
 # PNPM_VERSION: Version of the pnpm package manager activated via Corepack.
 # BUILD_NODE_OPTIONS: Node.js options used only while compiling Nuxt/Nitro.
 ARG NODE_VERSION=24.16.0
-ARG PNPM_VERSION=10.35.0
+ARG PNPM_VERSION=10.33.4
 ARG BUILD_NODE_OPTIONS=--max-old-space-size=4096
 
 # ─── Stage 1: base ─────────────────────────────────────────────────────────

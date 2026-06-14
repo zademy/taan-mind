@@ -214,18 +214,54 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The included `docker-compose.yml` spins up the entire stack — the app, Paperless-ngx (with Redis, PostgreSQL, Gotenberg, and Tika), and a bootstrap service that creates the admin user and API token.
 
+Use the published multi-architecture image from GitHub Container Registry:
+
 ```bash
-# Build and start everything
-docker compose up -d --build
+# Pull and start the latest release without building locally
+docker compose pull
+docker compose up -d --no-build
 
 # Remove the completed bootstrap container after startup
 docker compose rm -f paperless-bootstrap
+```
+
+Pin a specific release:
+
+```bash
+export TAAN_MIND_IMAGE_TAG=v1.0.17
+docker compose pull
+docker compose up -d --no-build
+```
+
+Build the app locally instead:
+
+```bash
+docker compose up -d --build
 ```
 
 > [!NOTE]
 > Docker Compose does **not** start Ollama. See [Ollama Runtime](#ollama-runtime) for details.
 
 The app runs on `http://localhost:3000` and Paperless-ngx on `http://localhost:8000`.
+
+### Docker Image Only
+
+The image supports `linux/amd64` and `linux/arm64`. Run it against existing Paperless-ngx and Ollama services:
+
+```bash
+docker pull ghcr.io/zademy/taan-mind:latest
+
+docker run -d \
+  --name taan-mind \
+  --restart unless-stopped \
+  --env-file .env \
+  --add-host host.docker.internal:host-gateway \
+  -e NUXT_PAPERLESS_BASE_URL=http://host.docker.internal:8000 \
+  -e NUXT_OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -p 3000:3000 \
+  -v taan_mind_data:/app/.data \
+  ghcr.io/zademy/taan-mind:latest
+```
 
 ## Environment Variables
 
