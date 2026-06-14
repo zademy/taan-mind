@@ -44,19 +44,20 @@ name: paperless-ui-chat
 
 services:
   # ─── app ──────────────────────────────────────────────────────────────────
-  # The main paperless-ui-chat application built from the local Dockerfile.
+  # The main application. Pull the published GHCR image for normal deployments
+  # or pass --build to rebuild the same tag from the local Dockerfile.
   # This is a Nuxt 4 app that provides a conversational UI on top of
   # Paperless-ngx documents, powered by local LLM inference via Ollama.
   app:
-    image: paperless-ui-chat:local
+    image: ghcr.io/zademy/taan-mind:${TAAN_MIND_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
       target: runtime
       args:
         # Node.js and pnpm versions must match those used during development.
-        NODE_VERSION: 24.14.1
-        PNPM_VERSION: 10.33.2
+        NODE_VERSION: 24.16.0
+        PNPM_VERSION: 10.33.4
         # Nuxt/Nitro can exceed Node's default Docker heap during production builds.
         BUILD_NODE_OPTIONS: ${BUILD_NODE_OPTIONS:---max-old-space-size=4096}
 
