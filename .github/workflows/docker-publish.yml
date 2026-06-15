@@ -1,53 +1,83 @@
 # ============================================================================
-# docker-publish.yml — Build and push Docker image to GitHub Container Registry
+# docker-publish.yml — Create GitHub Release and publish Docker image to GHCR
 # ============================================================================
 #
+# Merges the former release.yml + docker-publish.yml into a single workflow.
+# Combining them eliminates the race condition where Docker could read a stale
+# version tag before the release job created the new one.
+#
 # Triggers:
-#   - Push to master/main
-#   - Version tags (v*)
-#   - Manual dispatch (workflow_dispatch)
+#   - Push to master   → create release + build docker
+#   - Manual dispatch  → rebuild latest release (no new release created)
 #
-# Tagging strategy (CalVer with daily consecutive numbering):
-#   - First build of the day:   2026.06.14
-#   - Second build same day:    2026.06.14.1
-#   - Third build same day:     2026.06.14.2
+# Tagging strategy (release-version aligned):
+#   - First build of a release:   1.0.25
+#   - Rebuild of the same release: 1.0.25.1, 1.0.25.2, ...
 #
-# The workflow queries existing GHCR tags via the GitHub Packages API to
-# determine the next available suffix for the current date.
+# The docker job queries existing GHCR tags via the GitHub Packages API to
+# determine the next available suffix for the current release version.
 #
 # Published tags per build:
-#   - <date-tag>   (e.g. 2026.06.14 or 2026.06.14.1)
+#   - <version-tag>   (e.g. 1.0.25 or 1.0.25.1)
 #   - latest
-#   - sha-<short>  (Git commit SHA for traceability)
+#   - sha-<short>     (Git commit SHA for traceability)
 #
 # ============================================================================
 
-name: Docker Publish
+name: Release & Publish Docker
 
 on:
   push:
     branches:
       - master
-      - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-push:
+  # ── Job 1: Create GitHub Release (push to master only) ──────────────────
+  # release-on-merge-action bumps the version and creates a tag like v1.0.N
+  # on every merge to master. Skipped on manual dispatch so rebuilds don't
+  # create spurious releases.
+  release:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
+      - name: Create GitHub Release
+        uses: dexwritescode/release-on-merge-action@v1
+        with:
+          initial-version: '1.0.0'
+          tag-prefix: v
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Job 2: Build and push Docker image ──────────────────────────────────
+  # Runs after release (if push) or standalone (if manual dispatch).
+  # Reads the latest v* tag to determine the version, then queries GHCR for
+  # existing tags to pick the correct suffix for rebuilds.
+  docker:
+    runs-on: ubuntu-latest
+    needs: release
+    if: always() && (needs.release.result == 'success' || needs.release.result == 'skipped')
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
-      # ── Checkout ──────────────────────────────────────────────────────────
+      # ── Checkout (full history + tags) ───────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       # ── Lowercase image name (GHCR requirement) ──────────────────────────
       - name: Set lowercase image name
@@ -55,22 +85,34 @@ jobs:
           IMAGE_NAME="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           echo "IMAGE_NAME=${IMAGE_NAME}" >> "$GITHUB_ENV"
 
-      # ── Set up BuildKit ───────────────────────────────────────────────────
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # ── Determine release version from latest v* tag ─────────────────────
+      # After the release job completes, the new v* tag is pushed to the
+      # remote. For manual dispatch, it finds the latest existing tag.
+      - name: Get release version
+        id: version
+        run: |
+          set -eu
+          git fetch --tags --force
+          TAG=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          if [ -z "$TAG" ]; then
+            echo "::error::No 'v*' tag found. Cannot determine release version."
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          echo "Found latest tag: ${TAG} → version ${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      # ── Compute date-based tag with consecutive numbering ────────────────
+      # ── Compute final image tag with consecutive suffix ──────────────────
       # Queries the GitHub Packages API for existing container tags matching
-      # today's date and increments the suffix if the base tag already exists.
-      - name: Compute date-based tag
+      # the release version and increments the suffix if the base tag exists.
+      - name: Compute image tag
         id: tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
 
-          # CalVer date tag: 2026.06.14
-          DATE_TAG="$(date -u +'%Y.%m.%d')"
+          VERSION="${{ steps.version.outputs.version }}"
           OWNER="${{ github.repository_owner }}"
           PACKAGE="${GITHUB_REPOSITORY##*/}"
 
@@ -91,16 +133,16 @@ jobs:
               2>/dev/null | jq -r '.[].name? // empty' 2>/dev/null)"
           fi
 
-          # ── Find the highest consecutive suffix for today's date ──────────
+          # ── Find the highest consecutive suffix for this version ──────────
           BASE_EXISTS=0
           MAX_SUFFIX=0
 
           while IFS= read -r tag_name; do
             [ -z "$tag_name" ] && continue
 
-            if [ "$tag_name" = "$DATE_TAG" ]; then
+            if [ "$tag_name" = "$VERSION" ]; then
               BASE_EXISTS=1
-            elif [[ "$tag_name" == "${DATE_TAG}."* ]]; then
+            elif [[ "$tag_name" == "${VERSION}."* ]]; then
               suffix="${tag_name##*.}"
               if [[ "$suffix" =~ ^[0-9]+$ ]] && [ "$suffix" -gt "$MAX_SUFFIX" ]; then
                 MAX_SUFFIX="$suffix"
@@ -110,14 +152,17 @@ jobs:
 
           # ── Determine final tag ───────────────────────────────────────────
           if [ "$BASE_EXISTS" -eq 1 ] || [ "$MAX_SUFFIX" -gt 0 ]; then
-            FINAL_TAG="${DATE_TAG}.$(( MAX_SUFFIX + 1 ))"
+            FINAL_TAG="${VERSION}.$(( MAX_SUFFIX + 1 ))"
           else
-            FINAL_TAG="${DATE_TAG}"
+            FINAL_TAG="${VERSION}"
           fi
 
           echo "Computed image tag: ${FINAL_TAG}"
           echo "tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
-          echo "date_tag=${DATE_TAG}" >> "$GITHUB_OUTPUT"
+
+      # ── Set up BuildKit ───────────────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       # ── Authenticate to GHCR ─────────────────────────────────────────────
       - name: Log in to GitHub Container Registry
@@ -140,6 +185,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       # ── Build and push ───────────────────────────────────────────────────
+      # provenance: false avoids the 403 error on GHCR push (disables OIDC
+      # provenance attestation which requires extra token permissions).
       # Build-args mirror docker-compose.yml for consistent local/CI builds.
       # GHA cache (cache-from/cache-to) speeds up subsequent builds.
       - name: Build and push Docker image
@@ -149,6 +196,7 @@ jobs:
           file: ./Dockerfile
           target: runtime
           push: true
+          provenance: false
           build-args: |
             NODE_VERSION=24.16.0
             PNPM_VERSION=10.33.4
@@ -169,7 +217,7 @@ jobs:
             echo ""
             echo "| Tag | Image Reference |"
             echo "|-----|-----------------|"
-            echo "| \`$(date -u +'%Y.%m.%d')\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}\` |"
+            echo "| \`${{ steps.tag.outputs.tag }}\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}\` |"
             echo "| \`latest\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\` |"
             echo "| \`sha-${{ github.sha }}\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}\` |"
             echo ""
