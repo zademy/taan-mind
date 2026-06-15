@@ -210,6 +210,33 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Docker Compose (Full Stack)
+
+The included `docker-compose.yml` spins up the entire stack — the app, Paperless-ngx (with Redis, PostgreSQL, Gotenberg, and Tika), and a bootstrap service that creates the admin user and API token.
+
+Use the public image from [GitHub Container Registry](https://github.com/zademy/taan-mind/pkgs/container/taan-mind):
+
+```bash
+# Configure secrets and initial credentials before the first startup
+cp .env.example .env
+
+# Pull and start the latest release without building locally
+docker compose pull
+docker compose up -d --no-build
+
+# Remove the completed bootstrap container after startup
+docker compose rm -f paperless-bootstrap
+```
+
+Pin a specific release:
+
+```bash
+# GHCR image tags omit the leading "v" used by Git release tags
+export TAAN_MIND_IMAGE_TAG=1.0.26
+docker compose pull
+docker compose up -d --no-build
+```
+
 Build the app locally instead:
 
 ```bash
@@ -221,36 +248,192 @@ docker compose up -d --build
 
 The app runs on `http://localhost:3000` and Paperless-ngx on `http://localhost:8000`.
 
+### Docker Image Only
+
+The current public image targets `linux/amd64`; `docker login` is not required. It contains Taan Mind only. Paperless-ngx and Ollama may run on the Docker host, another machine, or a remote server, as long as their URLs are reachable from the Taan Mind container.
+
+Use the existing `.env` file. If it does not exist yet, create it from the repository template:
+
+```bash
+cp .env.example .env
+```
+
+For a standalone image deployment, ensure `.env` contains at least:
+
+```dotenv
+# Required: authentication and first production startup
+BETTER_AUTH_SECRET=replace-with-a-random-secret-of-at-least-32-characters
+BETTER_AUTH_URL=http://localhost:3000
+NUXT_AUTH_ADMIN_EMAIL=admin@example.com
+NUXT_AUTH_ADMIN_PASSWORD=replace-with-a-strong-password-of-at-least-12-characters
+NUXT_AUTH_ADMIN_NAME=Taan Admin
+
+# Document features: any Paperless-ngx URL reachable from this container
+NUXT_PAPERLESS_BASE_URL=https://paperless.example.com
+NUXT_PAPERLESS_API_TOKEN=replace-with-your-paperless-api-token
+
+# Option A: any Ollama URL reachable from this container
+NUXT_OLLAMA_BASE_URL=http://ollama.example.com:11434
+NUXT_OLLAMA_MODEL=glm-ocr:latest
+
+# Option B: use one or more cloud providers instead
+# OPENAI_API_KEY=replace-with-your-api-key
+# ANTHROPIC_API_KEY=replace-with-your-api-key
+# OPENROUTER_API_KEY=replace-with-your-api-key
+# NUXT_MINIMAX_API_KEY=replace-with-your-api-key
+# NUXT_GLM_API_KEY=replace-with-your-api-key
+# NOVA_API_KEY=replace-with-your-api-key
+```
+
+#### External services required
+
+The standalone image contains only Taan Mind. It does not include Paperless-ngx or Ollama.
+
+| Service           | Required                                                 | Used for                                                             |
+| ----------------- | -------------------------------------------------------- | -------------------------------------------------------------------- |
+| Paperless-ngx     | Optional for app startup; required for document features | Document search, management, synchronization, downloads, and context |
+| Ollama            | Optional for startup; required for local AI and OCR      | Local chat models, OCR, and document enrichment                      |
+| Cloud AI provider | Optional when Ollama supplies the required models        | Hosted chat and document-enrichment models                           |
+
+The application can start, pass its health check, and authenticate users while these services are unavailable. Their dependent features will still fail:
+
+- Paperless proxy requests return `502 Bad Gateway` when `NUXT_PAPERLESS_BASE_URL` cannot be reached.
+- Paperless requests return an upstream authentication error when `NUXT_PAPERLESS_API_TOKEN` is invalid.
+- Ollama model discovery, local chat, OCR, and document enrichment fail when `NUXT_OLLAMA_BASE_URL` is unreachable or `NUXT_OLLAMA_MODEL` has not been pulled.
+- AI generation requires at least one usable Ollama chat model or configured cloud provider.
+
+Choose the Paperless-ngx location that matches your deployment.
+
+**Remote or cloud Paperless-ngx**
+
+```dotenv
+# Public HTTPS, private network, LAN, or VPN endpoint
+NUXT_PAPERLESS_BASE_URL=https://paperless.example.com
+NUXT_PAPERLESS_API_TOKEN=replace-with-your-paperless-api-token
+```
+
+No additional Docker option is needed when the remote URL is directly reachable from the container.
+
+**Local Paperless-ngx published on host port `8000`**
+
+```dotenv
+NUXT_PAPERLESS_BASE_URL=http://host.docker.internal:8000
+NUXT_PAPERLESS_API_TOKEN=replace-with-your-paperless-api-token
+```
+
+Add this option to `docker run` so `host.docker.internal` resolves consistently, including on Linux:
+
+```bash
+--add-host host.docker.internal:host-gateway
+```
+
+`localhost` inside the Taan Mind container refers to Taan Mind itself, not the Docker host. Therefore, `NUXT_PAPERLESS_BASE_URL=http://localhost:8000` does not reach a Paperless-ngx instance published by the host.
+
+Ollama follows the same rule:
+
+```dotenv
+# Ollama running on the Docker host
+NUXT_OLLAMA_BASE_URL=http://host.docker.internal:11434
+
+# Ollama running on another reachable machine
+# NUXT_OLLAMA_BASE_URL=http://192.0.2.10:11434
+```
+
+If Paperless-ngx is not already installed, use the included [Docker Compose full stack](#docker-compose-full-stack) instead of the standalone command.
+
+Before starting Taan Mind:
+
+1. Confirm Paperless-ngx is running and obtain an API token for a user with the required document permissions.
+2. If using Ollama, start it and pull the configured OCR model:
+
+   ```bash
+   ollama pull glm-ocr:latest
+   ```
+
+3. Configure at least one Ollama chat model or cloud AI provider for AI conversations.
+
+Generate `BETTER_AUTH_SECRET` with:
+
+```bash
+openssl rand -hex 32
+```
+
+Pull and run the image:
+
+```bash
+docker pull ghcr.io/zademy/taan-mind:latest
+
+docker run -d \
+  --name taan-mind \
+  --init \
+  --restart unless-stopped \
+  --env-file .env \
+  -p 3000:3000 \
+  -v taan_mind_data:/app/.data \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  ghcr.io/zademy/taan-mind:latest
+```
+
+Open `http://localhost:3000` and sign in with `NUXT_AUTH_ADMIN_EMAIL` and `NUXT_AUTH_ADMIN_PASSWORD`.
+
+```bash
+# Check startup, migrations, and health
+docker logs -f taan-mind
+docker inspect --format='{{.State.Health.Status}}' taan-mind
+```
+
+Validate dependency connectivity from inside the running container:
+
+```bash
+# Paperless-ngx: expected result is HTTP 200
+docker exec taan-mind node --input-type=module -e "const url=process.env.NUXT_PAPERLESS_BASE_URL.replace(/\/$/,'')+'/api/documents/?page_size=1'; const response=await fetch(url,{headers:{Authorization:'Token '+process.env.NUXT_PAPERLESS_API_TOKEN}}); console.log('Paperless HTTP',response.status); process.exit(response.ok?0:1)"
+
+# Ollama: expected result is HTTP 200
+docker exec taan-mind node --input-type=module -e "const url=process.env.NUXT_OLLAMA_BASE_URL.replace(/\/$/,'')+'/api/tags'; const response=await fetch(url); console.log('Ollama HTTP',response.status); process.exit(response.ok?0:1)"
+```
+
+If either command reports `fetch failed`, verify the service is running, the port is exposed, firewalls permit access, and the URL is reachable from the container rather than only from the host.
+
+> [!IMPORTANT]
+> Keep the `taan_mind_data` volume. It stores the SQLite database, users, sessions, chats, settings, and cached application data. Removing the volume permanently removes that local data.
+>
+> For a public deployment, set `BETTER_AUTH_URL` to the exact HTTPS URL used in the browser, for example `https://mind.example.com`.
+
 ## Environment Variables
 
-| Variable                       | Required | Description                                                        |
-| ------------------------------ | -------- | ------------------------------------------------------------------ |
-| `MINIMAX_API_KEY`              | Yes      | MiniMax API key                                                    |
-| `MINIMAX_BASE_URL`             | No       | MiniMax API endpoint                                               |
-| `GLM_API_KEY`                  | Yes      | Z.AI GLM API key                                                   |
-| `GLM_BASE_URL`                 | No       | Z.AI API endpoint                                                  |
-| `ANTHROPIC_API_KEY`            | Yes      | Anthropic Claude API key                                           |
-| `ANTHROPIC_BASE_URL`           | No       | Optional Anthropic-compatible endpoint override                    |
-| `OPENAI_API_KEY`               | Yes      | OpenAI API key                                                     |
-| `OPENROUTER_API_KEY`           | No       | OpenRouter API key for dynamic model discovery and chat/enrichment |
-| `NOVA_API_KEY`                 | Yes      | Amazon Nova API key                                                |
-| `NOVA_BASE_URL`                | No       | Amazon Nova API endpoint                                           |
-| `BETTER_AUTH_SECRET`           | Yes      | Better Auth signing secret, at least 32 characters                 |
-| `BETTER_AUTH_URL`              | Yes      | Public base URL for auth callbacks and cookies                     |
-| `NUXT_AUTH_ADMIN_EMAIL`        | Yes      | First-run admin login email                                        |
-| `NUXT_AUTH_ADMIN_PASSWORD`     | Yes      | First-run admin password, at least 12 characters                   |
-| `NUXT_AUTH_ADMIN_NAME`         | No       | First-run admin display name (`Taan Admin`)                        |
-| `NUXT_PAPERLESS_BASE_URL`      | Yes      | Paperless-ngx instance URL                                         |
-| `NUXT_PAPERLESS_API_TOKEN`     | Yes      | Paperless-ngx API token                                            |
-| `PAPERLESS_BOOTSTRAP_USER`     | No       | Admin user created by Docker Compose (`paperless`)                 |
-| `PAPERLESS_BOOTSTRAP_PASSWORD` | No       | Password for the bootstrap admin user (`paperless`)                |
-| `PAPERLESS_BOOTSTRAP_EMAIL`    | No       | Email for the bootstrap admin user (`paperless@example.local`)     |
-| `NUXT_OLLAMA_BASE_URL`         | No       | Ollama server URL (`http://host.docker.internal:11434` in Docker)  |
-| `NUXT_OLLAMA_MODEL`            | No       | Ollama model for OCR (`glm-ocr:latest`)                            |
-| `NUXT_SYNC_INTERVAL_MS`        | No       | Paperless sync interval in ms (`5000`)                             |
-| `NUXT_PROCESS_INTERVAL_MS`     | No       | Document processing interval in ms (`10000`)                       |
+| Variable                       | Required    | Description                                                        |
+| ------------------------------ | ----------- | ------------------------------------------------------------------ |
+| `NUXT_MINIMAX_API_KEY`         | Provider    | MiniMax API key                                                    |
+| `NUXT_MINIMAX_BASE_URL`        | No          | MiniMax API endpoint                                               |
+| `NUXT_GLM_API_KEY`             | Provider    | Z.AI GLM API key                                                   |
+| `NUXT_GLM_BASE_URL`            | No          | Z.AI API endpoint                                                  |
+| `ANTHROPIC_API_KEY`            | Provider    | Anthropic Claude API key                                           |
+| `ANTHROPIC_BASE_URL`           | No          | Optional Anthropic-compatible endpoint override                    |
+| `OPENAI_API_KEY`               | Provider    | OpenAI API key                                                     |
+| `OPENROUTER_API_KEY`           | Provider    | OpenRouter API key for dynamic model discovery and chat/enrichment |
+| `NOVA_API_KEY`                 | Provider    | Amazon Nova API key                                                |
+| `NOVA_BASE_URL`                | No          | Amazon Nova API endpoint                                           |
+| `BETTER_AUTH_SECRET`           | Yes         | Better Auth signing secret, at least 32 characters                 |
+| `BETTER_AUTH_URL`              | Yes         | Public base URL for auth callbacks and cookies                     |
+| `NUXT_AUTH_ADMIN_EMAIL`        | First start | Initial production admin login email                               |
+| `NUXT_AUTH_ADMIN_PASSWORD`     | First start | Initial admin password, at least 12 characters                     |
+| `NUXT_AUTH_ADMIN_NAME`         | No          | Initial admin display name (`Taan Admin`)                          |
+| `NUXT_PAPERLESS_BASE_URL`      | Documents   | Any Paperless-ngx URL reachable from the application container     |
+| `NUXT_PAPERLESS_API_TOKEN`     | Documents   | API token for the configured Paperless-ngx instance                |
+| `PAPERLESS_BOOTSTRAP_USER`     | No          | Admin user created by Docker Compose (`paperless`)                 |
+| `PAPERLESS_BOOTSTRAP_PASSWORD` | No          | Password for the bootstrap admin user (`paperless`)                |
+| `PAPERLESS_BOOTSTRAP_EMAIL`    | No          | Email for the bootstrap admin user (`paperless@example.local`)     |
+| `NUXT_OLLAMA_BASE_URL`         | Provider    | Ollama server URL (`http://host.docker.internal:11434` in Docker)  |
+| `NUXT_OLLAMA_MODEL`            | No          | Ollama model for OCR (`glm-ocr:latest`)                            |
+| `NUXT_SYNC_INTERVAL_MS`        | No          | Paperless sync interval in ms (`5000`)                             |
+| `NUXT_PROCESS_INTERVAL_MS`     | No          | Document processing interval in ms (`10000`)                       |
 
 `BETTER_AUTH_SECRET` has no development fallback. The app refuses to start when it is missing or shorter than 32 characters.
+
+`Provider` means configure that variable only when using the corresponding provider. A cloud API key is not required when a reachable Ollama server supplies the needed chat and OCR models.
 
 ## Ollama Runtime
 
