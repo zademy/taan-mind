@@ -57,7 +57,7 @@ services:
       args:
         # Node.js and pnpm versions must match those used during development.
         NODE_VERSION: 24.16.0
-        PNPM_VERSION: 10.33.4
+        PNPM_VERSION: 10.34.3
         # Nuxt/Nitro can exceed Node's default Docker heap during production builds.
         BUILD_NODE_OPTIONS: ${BUILD_NODE_OPTIONS:---max-old-space-size=4096}
 

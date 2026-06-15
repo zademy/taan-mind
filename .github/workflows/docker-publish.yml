@@ -160,6 +160,14 @@ jobs:
           echo "Computed image tag: ${FINAL_TAG}"
           echo "tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
 
+      # ── Set up QEMU (cross-arch emulation for linux/arm64) ────────────────
+      # Enables building linux/arm64 images on the amd64 GitHub runner.
+      # Required for Apple Silicon macOS (Docker Desktop runs arm64).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       # ── Set up BuildKit ───────────────────────────────────────────────────
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -197,9 +205,10 @@ jobs:
           target: runtime
           push: true
           provenance: false
+          platforms: linux/amd64,linux/arm64
           build-args: |
             NODE_VERSION=24.16.0
-            PNPM_VERSION=10.33.4
+            PNPM_VERSION=10.34.3
             BUILD_NODE_OPTIONS=--max-old-space-size=4096
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}

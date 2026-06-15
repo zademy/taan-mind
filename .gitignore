@@ -22,6 +22,7 @@ logs
 .env
 .env.*
 !.env.example
+/taan-mind.env
 
 # VSC
 .history
@@ -30,3 +31,16 @@ logs
 
 # Codebase wiki — compiled artifact, regenerated from source
 .codebase-wiki/
+
+# keep graph outputs, skip heavy/local-only files
+
+# optional: commit for shared extraction speed, skip to keep repo small
+graphify-out/cache/
+
+# mtime-based, invalid after git clone - always gitignore this
+graphify-out/manifest.json
+
+# local token tracking, not useful to share
+graphify-out/cost.json
+# Local Pi runtime state
+.atl/
