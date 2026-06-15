@@ -1,0 +1,177 @@
+# ============================================================================
+# docker-publish.yml — Build and push Docker image to GitHub Container Registry
+# ============================================================================
+#
+# Triggers:
+#   - Push to master/main
+#   - Version tags (v*)
+#   - Manual dispatch (workflow_dispatch)
+#
+# Tagging strategy (CalVer with daily consecutive numbering):
+#   - First build of the day:   2026.06.14
+#   - Second build same day:    2026.06.14.1
+#   - Third build same day:     2026.06.14.2
+#
+# The workflow queries existing GHCR tags via the GitHub Packages API to
+# determine the next available suffix for the current date.
+#
+# Published tags per build:
+#   - <date-tag>   (e.g. 2026.06.14 or 2026.06.14.1)
+#   - latest
+#   - sha-<short>  (Git commit SHA for traceability)
+#
+# ============================================================================
+
+name: Docker Publish
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # ── Lowercase image name (GHCR requirement) ──────────────────────────
+      - name: Set lowercase image name
+        run: |
+          IMAGE_NAME="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> "$GITHUB_ENV"
+
+      # ── Set up BuildKit ───────────────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Compute date-based tag with consecutive numbering ────────────────
+      # Queries the GitHub Packages API for existing container tags matching
+      # today's date and increments the suffix if the base tag already exists.
+      - name: Compute date-based tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+
+          # CalVer date tag: 2026.06.14
+          DATE_TAG="$(date -u +'%Y.%m.%d')"
+          OWNER="${{ github.repository_owner }}"
+          PACKAGE="${GITHUB_REPOSITORY##*/}"
+
+          # ── Fetch existing tags from GitHub Container Registry ────────────
+          # Try user-scoped endpoint first, fall back to org-scoped.
+          # Returns one tag name per line.
+          EXISTING_TAGS="$(curl -sf \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/tags?per_page=100" \
+            2>/dev/null | jq -r '.[].name? // empty' 2>/dev/null)"
+
+          if [ -z "$EXISTING_TAGS" ]; then
+            EXISTING_TAGS="$(curl -sf \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/orgs/${OWNER}/packages/container/${PACKAGE}/tags?per_page=100" \
+              2>/dev/null | jq -r '.[].name? // empty' 2>/dev/null)"
+          fi
+
+          # ── Find the highest consecutive suffix for today's date ──────────
+          BASE_EXISTS=0
+          MAX_SUFFIX=0
+
+          while IFS= read -r tag_name; do
+            [ -z "$tag_name" ] && continue
+
+            if [ "$tag_name" = "$DATE_TAG" ]; then
+              BASE_EXISTS=1
+            elif [[ "$tag_name" == "${DATE_TAG}."* ]]; then
+              suffix="${tag_name##*.}"
+              if [[ "$suffix" =~ ^[0-9]+$ ]] && [ "$suffix" -gt "$MAX_SUFFIX" ]; then
+                MAX_SUFFIX="$suffix"
+              fi
+            fi
+          done <<< "$EXISTING_TAGS"
+
+          # ── Determine final tag ───────────────────────────────────────────
+          if [ "$BASE_EXISTS" -eq 1 ] || [ "$MAX_SUFFIX" -gt 0 ]; then
+            FINAL_TAG="${DATE_TAG}.$(( MAX_SUFFIX + 1 ))"
+          else
+            FINAL_TAG="${DATE_TAG}"
+          fi
+
+          echo "Computed image tag: ${FINAL_TAG}"
+          echo "tag=${FINAL_TAG}" >> "$GITHUB_OUTPUT"
+          echo "date_tag=${DATE_TAG}" >> "$GITHUB_OUTPUT"
+
+      # ── Authenticate to GHCR ─────────────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Extract metadata (labels, annotations) ──────────────────────────
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=taan-mind
+            org.opencontainers.image.description=Paperless-ngx conversational AI UI
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # ── Build and push ───────────────────────────────────────────────────
+      # Build-args mirror docker-compose.yml for consistent local/CI builds.
+      # GHA cache (cache-from/cache-to) speeds up subsequent builds.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime
+          push: true
+          build-args: |
+            NODE_VERSION=24.16.0
+            PNPM_VERSION=10.33.4
+            BUILD_NODE_OPTIONS=--max-old-space-size=4096
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Job summary ──────────────────────────────────────────────────────
+      - name: Publish build summary
+        run: |
+          {
+            echo "### Docker Image Published"
+            echo ""
+            echo "| Tag | Image Reference |"
+            echo "|-----|-----------------|"
+            echo "| \`$(date -u +'%Y.%m.%d')\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}\` |"
+            echo "| \`latest\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\` |"
+            echo "| \`sha-${{ github.sha }}\` | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}\` |"
+            echo ""
+            echo "> \`docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
