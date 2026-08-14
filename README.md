@@ -499,7 +499,7 @@ If `NUXT_PAPERLESS_API_TOKEN` is empty, the stack derives the token from the boo
 ## Project Structure
 
 ```
-paperless-ui-chat/
+taan-mind/
 ├── app/
 │   ├── components/          # Vue components (chat, tools, selectors, stats)
 │   ├── composables/         # Reactive logic (models, chats, paperless, OCR, stats)

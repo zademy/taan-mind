@@ -1,5 +1,5 @@
 # ============================================================================
-# Dockerfile — paperless-ui-chat
+# Dockerfile — taan-mind
 # ============================================================================
 #
 # Multi-stage Docker build for a Nuxt 4 application backed by libSQL (SQLite).
@@ -15,7 +15,7 @@
 #   - .env file in build context (optional, for runtime configuration)
 #
 # Usage:
-#   docker build -t paperless-ui-chat:local .
+#   docker build -t taan-mind:local .
 #   docker compose up --build
 #
 # ============================================================================

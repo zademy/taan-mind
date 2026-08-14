@@ -1,8 +1,8 @@
 # ============================================================================
-# docker-compose.yml — paperless-ui-chat
+# docker-compose.yml — taan-mind
 # ============================================================================
 #
-# Full stack for paperless-ui-chat with Paperless-ngx document management.
+# Full stack for taan-mind with Paperless-ngx document management.
 #
 # Architecture overview:
 #
@@ -15,14 +15,14 @@
 #                           └──────────────────────────────────────┘
 #
 #   ┌─────────────────┐
-#   │  Host / Browser │────▶ app (paperless-ui-chat :3000)
+#   │  Host / Browser │────▶ app (taan-mind :3000)
 #   └─────────────────┘       ├── Talks to webserver via Docker DNS
 #                               └── Talks to Ollama on host via
 #                                   host.docker.internal
 #
 # Networks:
 #   app                  — Isolated bridge for the chat application.
-#   paperless_frontend   — Bridge connecting the chat app and the
+#   paperless_frontend   — Bridge connecting the chat app and th
 #                           Paperless-ngx webserver.
 #   paperless_backend    — Internal-only bridge for Paperless-ngx
 #                           infrastructure (db, redis, gotenberg, tika).
@@ -40,7 +40,7 @@
 #
 # ============================================================================
 
-name: paperless-ui-chat
+name: taan-mind
 
 services:
   # ─── app ──────────────────────────────────────────────────────────────────
