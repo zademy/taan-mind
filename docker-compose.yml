@@ -56,7 +56,7 @@ services:
       target: runtime
       args:
         # Node.js and pnpm versions must match those used during development.
-        NODE_VERSION: 24.16.0
+        NODE_VERSION: 24.19.0
         PNPM_VERSION: 10.34.3
         # Nuxt/Nitro can exceed Node's default Docker heap during production builds.
         BUILD_NODE_OPTIONS: ${BUILD_NODE_OPTIONS:---max-old-space-size=4096}
@@ -232,7 +232,7 @@ services:
   # The main Paperless-ngx application server. Handles document management,
   # OCR processing, API endpoints, and the web dashboard.
   webserver:
-    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.0.5
     restart: unless-stopped
     labels:
       com.paperlessia.project: 'paperless-ia'
@@ -267,7 +267,7 @@ services:
       PAPERLESS_DBNAME: paperless
       PAPERLESS_DBUSER: paperless
       PAPERLESS_DBPASS: paperless
-      PAPERLESS_DB_POOLSIZE: 10
+      PAPERLESS_DB_OPTIONS: pool.max_size=10
 
       # ── OCR / document processing ────────────────────────────────────────
       PAPERLESS_TIKA_ENABLED: 1
@@ -320,7 +320,7 @@ services:
   # The token value is read from NUXT_PAPERLESS_API_TOKEN in the .env file.
   # Default credentials: paperless / paperless (change for production!).
   paperless-bootstrap:
-    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+    image: ghcr.io/paperless-ngx/paperless-ngx:3.0.5
     restart: 'no'
     env_file:
       - .env
@@ -335,7 +335,7 @@ services:
       PAPERLESS_DBNAME: paperless
       PAPERLESS_DBUSER: paperless
       PAPERLESS_DBPASS: paperless
-      PAPERLESS_DB_POOLSIZE: 10
+      PAPERLESS_DB_OPTIONS: pool.max_size=10
       PAPERLESS_TIKA_ENABLED: 1
       PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
       PAPERLESS_TIKA_ENDPOINT: http://tika:9998
