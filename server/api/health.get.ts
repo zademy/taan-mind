@@ -7,6 +7,6 @@
  */
 export default defineEventHandler(() => ({
   ok: true,
-  service: 'paperless-ui-chat',
+  service: 'taan-mind',
   timestamp: new Date().toISOString()
 }))

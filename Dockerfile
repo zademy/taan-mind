@@ -1,5 +1,5 @@
 # ============================================================================
-# Dockerfile — paperless-ui-chat
+# Dockerfile — taan-mind
 # ============================================================================
 #
 # Multi-stage Docker build for a Nuxt 4 application backed by libSQL (SQLite).
@@ -15,7 +15,7 @@
 #   - .env file in build context (optional, for runtime configuration)
 #
 # Usage:
-#   docker build -t paperless-ui-chat:local .
+#   docker build -t taan-mind:local .
 #   docker compose up --build
 #
 # ============================================================================
@@ -28,7 +28,7 @@
 # NODE_VERSION: Version of the Node.js runtime used across all stages.
 # PNPM_VERSION: Version of the pnpm package manager activated via Corepack.
 # BUILD_NODE_OPTIONS: Node.js options used only while compiling Nuxt/Nitro.
-ARG NODE_VERSION=24.16.0
+ARG NODE_VERSION=24.19.0
 ARG PNPM_VERSION=10.34.3
 ARG BUILD_NODE_OPTIONS=--max-old-space-size=4096
 
@@ -108,12 +108,26 @@ COPY public/ ./public/
 # reproducibility), then build the Nuxt app.
 # After building, copy native libSQL bindings (linux-*) into the Nitro output
 # so the runtime stage can use them without the full node_modules.
+# Sharp's prebuilt binaries (@img/sharp-*linux-*: binding + bundled libvips)
+# are also copied — Nitro externalizes sharp but does not trace these
+# platform-specific optionals through the pnpm symlink layout.
 RUN pnpm install --offline --frozen-lockfile --prod=false \
   && pnpm build \
   && mkdir -p .output/server/node_modules/@libsql \
   && for pkg in node_modules/.pnpm/node_modules/@libsql/linux-*; do \
        if [ -e "$pkg" ]; then cp -aL "$pkg" .output/server/node_modules/@libsql/; fi; \
-     done
+     done \
+  && rm -rf .output/server/node_modules/@img \
+  && mkdir -p .output/server/node_modules/@img \
+  && for pkg in node_modules/.pnpm/node_modules/@img/colour \
+                node_modules/.pnpm/node_modules/@img/sharp-*linux-*; do \
+       if [ -e "$pkg" ]; then cp -aL "$pkg" .output/server/node_modules/@img/; fi; \
+     done \
+  && ( cd .output/server/node_modules/.nitro/@img 2>/dev/null \
+       && for base in $(ls -d ./*@* 2>/dev/null | sed 's|.*/||; s/@.*//' | sort -u); do \
+            latest=$(ls -d "./${base}@"* 2>/dev/null | sort -V | tail -1); \
+            [ -n "$latest" ] && ln -sfn "$latest" "./$base" || true; \
+          done )
 
 # ─── Stage 4: runtime ─────────────────────────────────────────────────────
 # Purpose: Produce the final minimal production image. Contains only the

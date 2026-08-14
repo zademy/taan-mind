@@ -19,7 +19,7 @@ import highlight from '@comark/nuxt/plugins/highlight'
 /** Custom source-link component used within rendered markdown content */
 import _SourceLink from './SourceLink.vue'
 
-export default defineComarkComponent({
+export default defineMarkdownComponent({
   name: 'ChatComark',
   plugins: [highlight()],
   // Custom component mappings used within rendered markdown content
