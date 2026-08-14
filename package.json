@@ -7,6 +7,8 @@
     "build:check": "pnpm format:check && pnpm lint && nuxt build",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -59,6 +61,7 @@
     "prettier": "^3.8.3",
     "simple-git-hooks": "^2.13.1",
     "typescript": "^6.0.3",
+    "vitest": "^4.1.10",
     "vue-tsc": "^3.2.6"
   },
   "simple-git-hooks": {

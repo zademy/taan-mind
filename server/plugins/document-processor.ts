@@ -15,10 +15,8 @@ import { eq, asc, or } from 'drizzle-orm'
 import { consola } from 'consola'
 import { generateText } from 'ai'
 import { db, schema } from 'hub:db'
-import type { PaperlessDocument } from '~~/shared/types/paperless'
 import type { ModelId } from '#shared/utils/models'
 import { ProcessingStatus } from '#shared/utils/processingStatus'
-import { cleanText } from '../utils/textCleaner'
 import type { LanguageModelRuntimeConfig } from '../utils/aiModels'
 import { getLanguageModelProviderOptions, resolveLanguageModelFromConfig } from '../utils/aiModels'
 import { normalizeLanguageModelUsage, recordAIUsage } from '../utils/aiUsage'
@@ -29,6 +27,8 @@ import {
   PAPERLESS_CONFIG_MISSING_MESSAGE
 } from '../utils/paperless'
 import type { PaperlessFetchClient } from '../utils/paperless'
+import { createDocumentProcessingRun } from '../utils/documentProcessingRun'
+import { ocrDocumentFromConfig } from '../utils/ocr'
 
 /** Configuration required for AI-powered document enrichment models. */
 type DocumentProcessorConfig = LanguageModelRuntimeConfig
@@ -42,7 +42,8 @@ const MAX_PROCESSING_ATTEMPTS = 3
  * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns The numeric ID of the found or newly created correspondent.
  */
-async function findOrCreateCorrespondent(
+/* Legacy orchestration retained temporarily until ticket 04 removes it. */
+async function _findOrCreateCorrespondent(
   name: string,
   paperless: PaperlessFetchClient
 ): Promise<number> {
@@ -68,7 +69,7 @@ async function findOrCreateCorrespondent(
  * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns The numeric ID of the found or newly created document type.
  */
-async function findOrCreateDocumentType(
+async function _findOrCreateDocumentType(
   name: string,
   paperless: PaperlessFetchClient
 ): Promise<number> {
@@ -96,7 +97,7 @@ async function findOrCreateDocumentType(
  * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns The next sequential ASN value.
  */
-async function getNextASN(paperless: PaperlessFetchClient): Promise<number> {
+async function _getNextASN(paperless: PaperlessFetchClient): Promise<number> {
   // Get documents ordered by ASN descending, limit 1
   const response = await paperless<{ results: Array<{ archive_serial_number: number | null }> }>(
     '/documents/',
@@ -117,7 +118,7 @@ async function getNextASN(paperless: PaperlessFetchClient): Promise<number> {
  * @param paperless - Pre-authenticated Paperless-ngx API client.
  * @returns An array of numeric tag IDs in the same order as the input names.
  */
-async function findOrCreateTags(
+async function _findOrCreateTags(
   names: string[],
   paperless: PaperlessFetchClient
 ): Promise<number[]> {
@@ -174,6 +175,33 @@ export default defineNitroPlugin(nitroApp => {
       return
     }
     const paperless = createPaperlessClient(paperlessConfig)
+    const runDocumentProcessing = createDocumentProcessingRun({
+      paperless,
+      setRecord: async (documentId, changes) => {
+        await db
+          .update(schema.paperlessDocuments)
+          .set(changes)
+          .where(eq(schema.paperlessDocuments.id, documentId))
+      },
+      getSettings: getDocumentProcessingSettings,
+      processOcr: (file, mimeType) => ocrDocumentFromConfig(config, file, mimeType),
+      formatContent: ({ content, title, documentId, model }) =>
+        formatWithAI(content, title, documentId, model, config),
+      extractMetadata: async ({ content, title, documentId, model }) => {
+        const metadata = await extractMetadata(content, title, documentId, model, config)
+        return {
+          title: metadata.suggestedTitle ?? null,
+          tags: metadata.suggestedTags ?? [],
+          correspondent: metadata.suggestedCorrespondent ?? null,
+          document_type: metadata.suggestedDocumentType ?? null
+        }
+      },
+      warn: (message, error) =>
+        consola.warn(
+          `[Document Processor] ${message}`,
+          error instanceof Error ? error.message : error
+        )
+    })
 
     consola.info(`[Document Processor] Starting processing every ${intervalMs}ms`)
 
@@ -229,7 +257,9 @@ export default defineNitroPlugin(nitroApp => {
           })
           .where(eq(schema.paperlessDocuments.id, doc.id))
 
-        // 3-4. Download file + Run OCR via internal API
+        await runDocumentProcessing(doc)
+
+        /* // 3-4. Download file + Run OCR via internal API
         consola.info(
           `[Document Processor] Doc #${doc.id} — Downloading and processing OCR with GLM...`
         )
@@ -451,7 +481,7 @@ export default defineNitroPlugin(nitroApp => {
           })
           .where(eq(schema.paperlessDocuments.id, doc.id))
 
-        consola.success(`[Document Processor] Doc #${doc.id} processed successfully`)
+        consola.success(`[Document Processor] Doc #${doc.id} processed successfully`) */
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         consola.error('[Document Processor] Error:', errorMessage)
