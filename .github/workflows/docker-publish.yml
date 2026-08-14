@@ -1,24 +1,28 @@
 # ============================================================================
-# docker-publish.yml — Create GitHub Release and publish Docker image to GHCR
+# docker-publish.yml — Publish Docker image to GHCR + GitHub Release
 # ============================================================================
 #
-# Merges the former release.yml + docker-publish.yml into a single workflow.
-# Combining them eliminates the race condition where Docker could read a stale
-# version tag before the release job created the new one.
+# Triggers ONLY on merge/push to master (plus manual dispatch for rebuilds).
+# The branch/PR pipeline lives in ci.yml.
 #
-# Triggers:
-#   - Push to master   → create release + build docker
-#   - Manual dispatch  → rebuild latest release (no new release created)
+# Job order (a release is only created if the image publishes successfully):
+#
+#   1. version → determine next tag: v1.0.27 → v1.0.28 on merge to master;
+#                on manual dispatch reuse the latest tag (rebuild, no release)
+#   2. docker  → build multi-arch image and push to GHCR
+#   3. release → create tag + GitHub Release with AUTO-GENERATED notes
+#                ("What's Changed" lists every commit/PR since the previous
+#                release). Skipped on manual dispatch.
 #
 # Tagging strategy (release-version aligned):
-#   - First build of a release:   1.0.25
-#   - Rebuild of the same release: 1.0.25.1, 1.0.25.2, ...
+#   - First build of a release:   1.0.28
+#   - Rebuild of the same release: 1.0.28.1, 1.0.28.2, ...
 #
 # The docker job queries existing GHCR tags via the GitHub Packages API to
 # determine the next available suffix for the current release version.
 #
 # Published tags per build:
-#   - <version-tag>   (e.g. 1.0.25 or 1.0.25.1)
+#   - <version-tag>   (e.g. 1.0.28 or 1.0.28.1)
 #   - latest
 #   - sha-<short>     (Git commit SHA for traceability)
 #
@@ -36,42 +40,58 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  # ── Job 1: Create GitHub Release (push to master only) ──────────────────
-  # release-on-merge-action bumps the version and creates a tag like v1.0.N
-  # on every merge to master. Skipped on manual dispatch so rebuilds don't
-  # create spurious releases.
-  release:
+  # ── Job 1: Determine release version ─────────────────────────────────────
+  # On merge to master: bump patch from the latest v* tag (v1.0.27 → v1.0.28).
+  # On manual dispatch: reuse the latest tag so the image is rebuilt without
+  # creating a new release.
+  version:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    permissions:
-      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Create GitHub Release
-        uses: dexwritescode/release-on-merge-action@v1
-        with:
-          initial-version: '1.0.0'
-          tag-prefix: v
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine release version
+        id: version
+        run: |
+          set -eu
+          git fetch --tags --force
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
 
-  # ── Job 2: Build and push Docker image ──────────────────────────────────
-  # Runs after release (if push) or standalone (if manual dispatch).
-  # Reads the latest v* tag to determine the version, then queries GHCR for
+          if [ -z "$LATEST_TAG" ]; then
+            # No previous release: start at the initial version.
+            TAG="v1.0.1"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # Merge to master: bump the patch segment.
+            BASE="${LATEST_TAG#v}"
+            MAJOR="${BASE%%.*}"
+            MINOR="$(echo "$BASE" | cut -d. -f2)"
+            PATCH="$(echo "$BASE" | cut -d. -f3)"
+            TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+          else
+            # Manual dispatch: rebuild the latest release as-is.
+            TAG="$LATEST_TAG"
+          fi
+
+          echo "Previous tag: ${LATEST_TAG:-none} → Release tag: ${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  # ── Job 2: Build and push Docker image ───────────────────────────────────
+  # Uses the version computed by the `version` job, then queries GHCR for
   # existing tags to pick the correct suffix for rebuilds.
   docker:
     runs-on: ubuntu-latest
-    needs: release
-    if: always() && (needs.release.result == 'success' || needs.release.result == 'skipped')
+    needs: version
     permissions:
       contents: read
       packages: write
-      id-token: write
-
+    outputs:
+      image-tag: ${{ steps.tag.outputs.tag }}
     steps:
       # ── Checkout (full history + tags) ───────────────────────────────────
       - name: Checkout repository
@@ -85,23 +105,6 @@ jobs:
           IMAGE_NAME="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           echo "IMAGE_NAME=${IMAGE_NAME}" >> "$GITHUB_ENV"
 
-      # ── Determine release version from latest v* tag ─────────────────────
-      # After the release job completes, the new v* tag is pushed to the
-      # remote. For manual dispatch, it finds the latest existing tag.
-      - name: Get release version
-        id: version
-        run: |
-          set -eu
-          git fetch --tags --force
-          TAG=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
-          if [ -z "$TAG" ]; then
-            echo "::error::No 'v*' tag found. Cannot determine release version."
-            exit 1
-          fi
-          VERSION="${TAG#v}"
-          echo "Found latest tag: ${TAG} → version ${VERSION}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
       # ── Compute final image tag with consecutive suffix ──────────────────
       # Queries the GitHub Packages API for existing container tags matching
       # the release version and increments the suffix if the base tag exists.
@@ -112,7 +115,7 @@ jobs:
         run: |
           set -eu
 
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ needs.version.outputs.version }}"
           OWNER="${{ github.repository_owner }}"
           PACKAGE="${GITHUB_REPOSITORY##*/}"
 
@@ -207,7 +210,7 @@ jobs:
           provenance: false
           platforms: linux/amd64,linux/arm64
           build-args: |
-            NODE_VERSION=24.16.0
+            NODE_VERSION=24.19.0
             PNPM_VERSION=10.34.3
             BUILD_NODE_OPTIONS=--max-old-space-size=4096
           tags: |
@@ -232,3 +235,43 @@ jobs:
             echo ""
             echo "> \`docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Job 3: Create GitHub Release (push to master only) ───────────────────
+  # Runs ONLY after the image was published successfully, so a broken Docker
+  # build never leaves an orphan release. `--generate-notes` makes GitHub
+  # auto-generate the "What's Changed" section with every commit/PR merged
+  # since the previous release tag.
+  release:
+    runs-on: ubuntu-latest
+    needs: [version, docker]
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+          IMAGE_TAG: ${{ needs.docker.outputs.image-tag }}
+        run: |
+          set -eu
+          IMAGE_NAME="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+
+          gh release create "$TAG" \
+            --repo '${{ github.repository }}' \
+            --target '${{ github.sha }}' \
+            --title "$TAG" \
+            --generate-notes \
+            --notes "Published Docker image: \`${{ env.REGISTRY }}/${IMAGE_NAME}:${IMAGE_TAG}\`
+
+          \`\`\`
+          docker pull ${{ env.REGISTRY }}/${IMAGE_NAME}:${IMAGE_TAG}
+          \`\`\`
+          "
+
+          echo "### GitHub Release Created" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release [\`$TAG\`](${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG) with auto-generated commit notes." >> "$GITHUB_STEP_SUMMARY"
