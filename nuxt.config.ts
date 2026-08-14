@@ -20,6 +20,17 @@ export default defineNuxtConfig({
     enabled: process.env.NODE_ENV !== 'production'
   },
 
+  /**
+   * Disable the @nuxt/fonts integration that @nuxt/ui registers by default.
+   * It tries to resolve font families (DM Sans, JetBrains Mono, Cinzel) by
+   * fetching Google Fonts at build time, which fails inside the Docker build
+   * container and wastes ~1-2 min on retries per platform. Fonts are already
+   * loaded at runtime via <link> tags in app.vue.
+   */
+  ui: {
+    fonts: false
+  },
+
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
