@@ -7,7 +7,7 @@
 import type { H3Event } from 'h3'
 import { stripTrailingSlash } from './url'
 
-const PAPERLESS_API_ACCEPT_HEADER = 'application/json; version=5'
+const PAPERLESS_API_ACCEPT_HEADER = 'application/json'
 
 /**
  * Diagnostic message returned by callers when the Paperless runtime config
