@@ -14,6 +14,6 @@
 export const APP_NAME = 'Taan Mind'
 /** Human-readable client identifier shown in device sessions, e.g. "Taan Mind Web v1.0.17" */
 export const APP_CLIENT_NAME = 'Taan Mind Web'
-export const APP_VERSION = 'v1.0.17'
+export const APP_VERSION = 'v1.0.29'
 /** Full display name built from client name and version. */
 export const APP_DISPLAY_NAME = `${APP_CLIENT_NAME} ${APP_VERSION}`

@@ -15,7 +15,7 @@ import ExcelJS from 'exceljs'
 import { simpleParser } from 'mailparser'
 import type { AIUsageMetrics } from '#shared/utils/aiUsage'
 import { normalizeOllamaUsage } from './aiUsage'
-import { useOllamaClient } from './ollama'
+import { getOllamaBaseUrlFromConfig, useOllamaClient } from './ollama'
 
 /** Response from the Ollama `/api/generate` endpoint. */
 interface OllamaGenerateResponse {
@@ -63,6 +63,12 @@ interface OcrResult {
   model: string | null
   /** Aggregated provider-reported usage, or null when no AI model was used. */
   usage: AIUsageMetrics | null
+}
+
+/** Runtime configuration required to execute OCR outside an HTTP request. */
+export interface OcrRuntimeConfig {
+  ollamaBaseUrl?: unknown
+  ollamaModel?: unknown
 }
 
 /** Image MIME types that can be converted to PNG for OCR processing (e.g., TIFF, GIF, BMP). */
@@ -345,6 +351,76 @@ export async function ocrDocument(
   // Direct images (PNG, JPEG, WebP)
   const base64 = fileBuffer.toString('base64')
   const result = await ocrImage(client, model, base64, 'Text Recognition')
+  return {
+    pages: [{ page: 1, text: result.text }],
+    totalPages: 1,
+    method: 'ocr',
+    model: `ollama/${model}`,
+    usage: result.usage
+  }
+}
+
+/** Processes OCR with runtime config for background jobs that have no H3 event. */
+export async function ocrDocumentFromConfig(
+  config: OcrRuntimeConfig,
+  fileBuffer: Buffer,
+  mimeType: string
+): Promise<OcrResult> {
+  if (TEXT_EXTRACTABLE_TYPES.has(mimeType)) {
+    const text = await extractTextFromDocument(fileBuffer, mimeType)
+    return {
+      pages: [{ page: 1, text }],
+      totalPages: 1,
+      method: 'text-extraction',
+      model: null,
+      usage: null
+    }
+  }
+
+  const client = $fetch.create({ baseURL: getOllamaBaseUrlFromConfig(config) })
+  const configuredModel = typeof config.ollamaModel === 'string' ? config.ollamaModel.trim() : ''
+  const model = configuredModel || 'glm-ocr:latest'
+
+  if (CONVERTIBLE_IMAGE_TYPES.has(mimeType)) {
+    const pngBuffer = await convertImageToPng(fileBuffer)
+    const result = await ocrImage(client, model, pngBuffer.toString('base64'), 'Text Recognition')
+    return {
+      pages: [{ page: 1, text: result.text }],
+      totalPages: 1,
+      method: 'ocr',
+      model: `ollama/${model}`,
+      usage: result.usage
+    }
+  }
+
+  if (mimeType === 'application/pdf') {
+    const images = await pdfToImages(fileBuffer)
+    const pageResults: Array<OcrPageResult & { usage: AIUsageMetrics }> = []
+    for (let start = 0; start < images.length; start += PDF_OCR_PAGE_CONCURRENCY) {
+      const batch = images.slice(start, start + PDF_OCR_PAGE_CONCURRENCY)
+      const batchPages = await Promise.all(
+        batch.map(async (image, index) => {
+          const page = start + index + 1
+          const result = await ocrImage(client, model, image, 'Text Recognition')
+          return { page, text: result.text, usage: result.usage }
+        })
+      )
+      pageResults.push(...batchPages)
+    }
+    return {
+      pages: pageResults.map(({ page, text }) => ({ page, text })),
+      totalPages: images.length,
+      method: 'ocr',
+      model: `ollama/${model}`,
+      usage: aggregateOcrUsage(pageResults)
+    }
+  }
+
+  if (!new Set(['image/png', 'image/jpeg', 'image/webp']).has(mimeType)) {
+    throw new Error(`Unsupported file type for OCR: ${mimeType}`)
+  }
+
+  const result = await ocrImage(client, model, fileBuffer.toString('base64'), 'Text Recognition')
   return {
     pages: [{ page: 1, text: result.text }],
     totalPages: 1,

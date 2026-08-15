@@ -44,3 +44,6 @@ graphify-out/manifest.json
 graphify-out/cost.json
 # Local Pi runtime state
 .atl/
+/.scratch
+/.playwright-mcp
+/docs
