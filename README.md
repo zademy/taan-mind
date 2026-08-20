@@ -27,7 +27,7 @@
 </p>
 
 <p align="center">
-  <video src="images/taan-mind-presentation.mp4" controls width="100%"></video>
+  <video src="https://github.com/user-attachments/assets/7c5af22d-1986-41b6-8d6d-9b5ffbbbe75d" controls width="100%"></video>
 </p>
 
 ---
