@@ -26,6 +26,10 @@
   <a href="https://www.producthunt.com/products/taan-mind?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-taan-mind" target="_blank" rel="noopener noreferrer"><img alt="Taan Mind - Intelligent paperless workspace | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1143366&amp;theme=light&amp;t=1778385664273"></a>
 </p>
 
+<p align="center">
+  <video src="images/taan-mind-presentation.mp4" controls width="100%"></video>
+</p>
+
 ---
 
 ## Features
