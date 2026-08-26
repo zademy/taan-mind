@@ -12,6 +12,7 @@ okf_version: "0.2"
 * [Configure secrets and initial credentials before the first startup](./README.md)
 * [Security Policy](./SECURITY.md)
 * [Taan Mind Domain Context](./CONTEXT.md)
+* [template-wiki](./template-wiki.md)
 
 ## Subdirectories
 
