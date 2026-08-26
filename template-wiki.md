@@ -1,3 +1,14 @@
+---
+description: Prompt genérico para generar una base de conocimientos OKF v0.2 en cualquier proyecto, replicando la estructura del wiki de Taan Mind.
+tags:
+  - plantilla
+  - prompt
+  - okf
+  - wiki
+title: Plantilla de wiki OKF
+type: Plantilla
+---
+
 Crea una base de conocimientos OKF v0.2 de este proyecto como subárbol `wiki/`, siguiendo la skill local `open-knowledge` (contrato de herramientas: TODA escritura/edición de `.md` se hace con las herramientas MCP de OpenKnowledge, nunca con herramientas nativas de archivo) y la skill `okf-knowledge-base` (semántica OKF). Todo el contenido en **español**, archivos en **kebab-case**.
 
 ## 1. Investiga primero
