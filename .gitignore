@@ -47,3 +47,9 @@ graphify-out/cost.json
 /.scratch
 /.playwright-mcp
 /docs
+.claude/skills/open-knowledge/
+.cursor/skills/open-knowledge/
+.codex/skills/open-knowledge/
+.github/skills/open-knowledge/
+.opencode/skills/open-knowledge/
+.pi/skills/open-knowledge/
