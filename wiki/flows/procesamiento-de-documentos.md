@@ -5,8 +5,6 @@ description: Run completo de enriquecimiento — reclamo, descarga, OCR, formate
 tags: [ocr, ollama, mupdf, background, enriquecimiento]
 ---
 
-# Procesamiento de documentos
-
 Pipeline de **OCR y enriquecimiento en segundo plano**: convierte documentos crudos de Paperless en texto limpio más metadatos sugeridos por IA, y devuelve a Paperless los campos que faltan. Lo orquesta el plugin `server/plugins/document-processor.ts` sobre el módulo `documentProcessingRun` (`server/utils/documentProcessingRun.ts`).
 
 ## Pasos
