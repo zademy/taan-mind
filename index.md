@@ -6,19 +6,18 @@ okf_version: "0.2"
 
 Wiki del proyecto **Taan Mind** (`taan-mind`): aplicación full-stack Nuxt 4 que integra un chat de IA multi-proveedor con streaming con la gestión documental de Paperless-ngx — proxy CRUD, OCR en segundo plano (Ollama + MuPDF), extracción de metadatos con IA, panel de KPIs y chat compartible.
 
-Base conforme a [Open Knowledge Format](./concepts/como-empezar.md) v0.2: conceptos en `concepts/`, un concepto por archivo, relaciones mediante enlaces markdown estándar.
+Base conforme a [Open Knowledge Format](https://openknowledge.ai) v0.2. Todo el contenido vive en [`wiki/`](./wiki/index.md):
 
-## Mapa de conceptos
-
-- [Cómo empezar](./concepts/como-empezar.md) — puesta en marcha, comandos y puerta de verificación.
-- [Arquitectura](./concepts/arquitectura.md) — capas `app/`, `server/`, `shared/` y convenciones del código.
-- [Proveedores de IA](./concepts/proveedores-ia.md) — chat multi-proveedor con Vercel AI SDK.
-- [Integración Paperless-ngx](./concepts/integracion-paperless.md) — proxy CRUD, sincronización y extracción de metadatos.
-- [Flujo OCR](./concepts/flujo-ocr.md) — procesamiento de documentos en segundo plano.
-- [Autenticación](./concepts/autenticacion.md) — Better Auth, sesiones y bootstrap del admin.
-- [Modelo de datos](./concepts/modelo-de-datos.md) — Drizzle ORM sobre SQLite y migraciones.
+- [OVERVIEW](./wiki/OVERVIEW.md) — qué es Taan Mind, capacidades y stack.
+- [Arquitectura](./wiki/index.md#arquitectura) — vista general y decisiones.
+- [Conceptos](./wiki/index.md#conceptos) — vocabulario del dominio.
+- [Flujos](./wiki/index.md#flujos) — procesos paso a paso con diagramas.
+- [Guías](./wiki/index.md#guias) — empezar, desarrollar y desplegar.
+- [Módulos](./wiki/index.md#modulos) — un doc por módulo o componente.
+- [Registro del wiki](./wiki/log.md) — historial de cambios de la base.
 
 ## Fuentes
 
 - [AGENTS.md](./AGENTS.md) — contexto de ingeniería del repositorio.
 - [README.md](./README.md) — arquitectura y diagramas.
+- [CONTEXT.md](./CONTEXT.md) — contexto de dominio.
