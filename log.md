@@ -1,12 +1,11 @@
 # Registro de cambios
 
-## 2026-08-26: Wiki OKF completo
+## 2026-08-26: Wiki OKF reconstruido desde cero
 
-- Reestructurada la base a `wiki/` con carpetas fijas: `architecture/`, `concepts/`, `flows/`, `guides/`, `modules/`, más `OVERVIEW.md`, `index.md` y `log.md` propios.
-- Migrados los conceptos previos; `arquitectura` y `flujo-ocr` quedaron absorbidos por `architecture/vista-general` y `flows/procesamiento-de-documentos`; `como-empezar` pasó a guías.
-- Añadidos: 4 decisiones de arquitectura, vocabulario de procesamiento (`registro-de-documento`), 3 flujos con diagramas mermaid, guías de desarrollo y despliegue, y 7 docs de módulos.
-- Creadas plantillas por carpeta (`decision`, `concepto`, `flujo`, `guia`, `modulo`) y frontmatter descriptivo en cada carpeta.
-- Eliminada la carpeta `concepts/` raíz tras la migración.
+- Wiki OKF v0.2 reescrito desde cero en `wiki/` con carpetas fijas: `architecture/`, `concepts/`, `flows/`, `guides/`, `modules/`, más `OVERVIEW.md`, `index.md` y `log.md` propios.
+- Contenido: vista de arquitectura + 4 decisiones, 5 conceptos (incluido el vocabulario de procesamiento `registro-de-documento`), 3 flujos con diagramas mermaid, 3 guías y 7 docs de módulos.
+- Plantillas por carpeta (`decision`, `concepto`, `flujo`, `guia`, `modulo`) y frontmatter descriptivo en cada carpeta.
+- La carpeta `concepts/` raíz previa fue eliminada; su contenido migró al nuevo wiki.
 
 ## 2026-08-26: Base OKF inicial
 

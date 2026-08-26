@@ -5,6 +5,8 @@
 * [architecture](./architecture/index.md)
 * [concepts](./concepts/index.md)
 * [flows](./flows/index.md)
+* [guides](./guides/index.md)
+* [modules](./modules/index.md)
 
 ## Vision
 
